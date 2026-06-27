@@ -9,6 +9,11 @@
   <meta property="og:title" content="The Lead Machine by Thelbert D" />
   <meta property="og:description" content="A complete GoHighLevel + n8n + Claude AI lead system, built and live in 14 days. Live in 14 days or it's free." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="logo.png" />
+  <meta name="theme-color" content="#060A16" />
+
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
@@ -28,16 +33,16 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { background: #070711; font-family: 'Inter', sans-serif; }
+    body { background: #060A16; font-family: 'Inter', sans-serif; }
 
     .gradient-text {
-      background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f97316 100%);
+      background: linear-gradient(135deg, #7DD3FC 0%, #2E8BF5 50%, #1D4ED8 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
-    .gradient-bg { background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); }
+    .gradient-bg { background: linear-gradient(135deg, #2E8BF5 0%, #1D4ED8 100%); }
     .card-glow { transition: all 0.3s ease; }
-    .card-glow:hover { box-shadow: 0 0 40px rgba(124, 58, 237, 0.25); transform: translateY(-4px); }
-    .btn-glow:hover { box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); transform: scale(1.04); }
+    .card-glow:hover { box-shadow: 0 0 40px rgba(45, 139, 245, 0.28); transform: translateY(-4px); }
+    .btn-glow:hover { box-shadow: 0 0 30px rgba(56, 189, 248, 0.55); transform: scale(1.04); }
 
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
     .float-anim { animation: float 6s ease-in-out infinite; }
@@ -58,26 +63,26 @@
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
       color: #fff; outline: none; transition: border-color 0.2s;
     }
-    input:focus, textarea:focus { border-color: #7c3aed; }
+    input:focus, textarea:focus { border-color: #2E8BF5; }
     input::placeholder, textarea::placeholder { color: #4b5563; }
     details summary::-webkit-details-marker { display: none; }
 
     /* ===== Ambient animated background ===== */
-    .bg-fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #070711; }
+    .bg-fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #060A16; }
     .bg-fx .orb { position: absolute; border-radius: 9999px; filter: blur(90px); will-change: transform; }
     .bg-fx .orb-1 {
       width: 540px; height: 540px; top: -140px; left: -120px; opacity: .50;
-      background: radial-gradient(circle at 30% 30%, #7c3aed, transparent 68%);
+      background: radial-gradient(circle at 30% 30%, #1D4ED8, transparent 68%);
       animation: drift1 26s ease-in-out infinite;
     }
     .bg-fx .orb-2 {
       width: 500px; height: 500px; top: 28%; right: -160px; opacity: .42;
-      background: radial-gradient(circle at 50% 50%, #ec4899, transparent 68%);
+      background: radial-gradient(circle at 50% 50%, #2E8BF5, transparent 68%);
       animation: drift2 32s ease-in-out infinite;
     }
     .bg-fx .orb-3 {
       width: 460px; height: 460px; bottom: -160px; left: 22%; opacity: .34;
-      background: radial-gradient(circle at 50% 50%, #f97316, transparent 68%);
+      background: radial-gradient(circle at 50% 50%, #38BDF8, transparent 68%);
       animation: drift3 38s ease-in-out infinite;
     }
     .bg-fx .gridfx {
@@ -116,7 +121,7 @@
     .spin-border { position: relative; }
     .spin-border::before {
       content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
-      background: conic-gradient(from var(--bd), #a78bfa, #ec4899, #f97316, #38bdf8, #a78bfa);
+      background: conic-gradient(from var(--bd), #7DD3FC, #2E8BF5, #1D4ED8, #38BDF8, #7DD3FC);
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
               mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -151,11 +156,7 @@
   <nav id="nav" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <a href="#top" class="group flex items-center gap-2.5">
-        <span class="gradient-bg flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-purple-900/40 transition-transform duration-300 group-hover:scale-105">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-          </svg>
-        </span>
+        <img src="logo.png" alt="Future Builder logo" class="h-14 w-14 rounded-xl object-cover shadow-lg shadow-blue-900/40 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105" />
         <span class="font-display text-lg font-bold leading-none tracking-tight text-white">Future<span class="gradient-text">Builder</span></span>
       </a>
       <div class="hidden items-center gap-8 md:flex">
@@ -170,13 +171,13 @@
 
   <!-- ============================== HERO ============================== -->
   <section id="top" class="relative flex min-h-screen items-center overflow-hidden px-6 pt-28 pb-20">
-    <div class="pointer-events-none absolute top-1/3 -left-40 h-[500px] w-[500px] rounded-full bg-purple-700/20 blur-3xl"></div>
-    <div class="pointer-events-none absolute bottom-1/4 -right-40 h-[500px] w-[500px] rounded-full bg-pink-600/15 blur-3xl"></div>
+    <div class="pointer-events-none absolute top-1/3 -left-40 h-[500px] w-[500px] rounded-full bg-blue-700/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute bottom-1/4 -right-40 h-[500px] w-[500px] rounded-full bg-sky-500/15 blur-3xl"></div>
 
     <div class="mx-auto w-full max-w-3xl text-center">
       <div class="fade-up-1 mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-gray-400">
         <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-green-400"></span>
-        A done-for-you offer from Thelbert Desoloc
+        A done-for-you offer from Future<span class="gradient-text font-semibold">Builder</span>
       </div>
       <h1 class="fade-up-2 mt-8 font-display text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
         Stop losing leads. Get a complete <span class="gradient-text">GoHighLevel system</span> built in 14 days.
@@ -207,7 +208,7 @@
   <!-- ============================== PROBLEM ============================== -->
   <section class="mx-auto max-w-4xl px-6 py-24">
     <div class="mb-14 text-center" data-scroll>
-      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-purple-400">Sound familiar?</p>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">Sound familiar?</p>
       <h2 class="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
         You're getting leads and still <span class="gradient-text">losing them anyway</span>
       </h2>
@@ -240,7 +241,7 @@
   <section id="offer" class="px-6 py-24">
     <div class="mx-auto max-w-5xl">
       <div class="mx-auto mb-14 max-w-2xl text-center" data-scroll>
-        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-purple-400">The offer</p>
+        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">The offer</p>
         <h2 class="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">The Lead Machine</h2>
         <p class="mt-4 text-lg text-gray-400">
           A complete done-for-you lead system: funnel, CRM, automated follow-up, and AI, all built, connected, and handed over in 14 days.
@@ -311,7 +312,7 @@
           </li>
 
           <!-- BONUS -->
-          <li class="bg-purple-500/[0.06] px-6 py-3 sm:px-8">
+          <li class="bg-sky-500/[0.06] px-6 py-3 sm:px-8">
             <span class="text-xs font-bold uppercase tracking-[0.2em] gradient-text">Fast-action bonuses</span>
           </li>
 
@@ -320,7 +321,7 @@
             <div class="flex-1">
               <div class="flex items-baseline justify-between gap-3">
                 <h3 class="font-display text-base font-bold text-white">Bonus #1: Meta ad campaign setup</h3>
-                <span class="whitespace-nowrap font-display text-sm font-bold text-pink-400">$350</span>
+                <span class="whitespace-nowrap font-display text-sm font-bold text-sky-400">$350</span>
               </div>
               <p class="mt-1 text-sm leading-relaxed text-gray-400">A launch-ready Facebook/Instagram campaign with audiences and creative, wired straight into your new funnel.</p>
             </div>
@@ -331,7 +332,7 @@
             <div class="flex-1">
               <div class="flex items-baseline justify-between gap-3">
                 <h3 class="font-display text-base font-bold text-white">Bonus #2: Branded design pack + 30-day support</h3>
-                <span class="whitespace-nowrap font-display text-sm font-bold text-pink-400">$450</span>
+                <span class="whitespace-nowrap font-display text-sm font-bold text-sky-400">$450</span>
               </div>
               <p class="mt-1 text-sm leading-relaxed text-gray-400">Ad graphics and social assets in your brand, plus 30 days of tweaks and support after launch so it keeps running clean.</p>
             </div>
@@ -351,7 +352,7 @@
             </div>
             <span class="font-display text-4xl font-extrabold tracking-tight text-white">$1,500</span>
           </div>
-          <a href="#apply" class="spin-border mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-[#1a0b2e] transition-all hover:bg-white/90">
+          <a href="#apply" class="spin-border mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-[#0A1330] transition-all hover:bg-white/90">
             Build your CRM Now
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </a>
@@ -364,7 +365,7 @@
   <!-- ============================== HOW IT WORKS ============================== -->
   <section class="mx-auto max-w-5xl px-6 py-24">
     <div class="mx-auto mb-14 max-w-2xl text-center" data-scroll>
-      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-purple-400">How the 14 days work</p>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">How the 14 days work</p>
       <h2 class="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">From kickoff to live in three steps</h2>
     </div>
     <div class="grid gap-5 md:grid-cols-3">
@@ -403,7 +404,7 @@
   <section id="proof" class="bg-white/[0.02] px-6 py-24">
     <div class="mx-auto max-w-6xl">
       <div class="mx-auto mb-14 max-w-2xl text-center" data-scroll>
-        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-pink-400">What clients say</p>
+        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">What clients say</p>
         <h2 class="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Real results, <span class="gradient-text">real people</span></h2>
       </div>
 
@@ -412,7 +413,7 @@
           <div class="flex gap-0.5 text-yellow-400 text-sm">★★★★★</div>
           <p class="flex-1 text-sm leading-relaxed text-gray-300">"Thelbert completely transformed our online presence. The registration page he built converted so well, we filled our entire cohort in under 48 hours."</p>
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-xs font-bold text-white">SM</div>
+            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-bold text-white">SM</div>
             <div class="text-white text-sm font-semibold">Sarah Mitchell</div>
           </div>
         </div>
@@ -421,7 +422,7 @@
           <div class="flex gap-0.5 text-yellow-400 text-sm">★★★★★</div>
           <p class="flex-1 text-sm leading-relaxed text-gray-300">"We were already using GoHighLevel but everything was messy. After the optimization, our pipeline became clear and we stopped losing leads. Huge difference."</p>
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-xs font-bold text-white">DR</div>
+            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-bold text-white">DR</div>
             <div class="text-white text-sm font-semibold">Daniel Reyes</div>
           </div>
         </div>
@@ -430,7 +431,7 @@
           <div class="flex gap-0.5 text-yellow-400 text-sm">★★★★★</div>
           <p class="flex-1 text-sm leading-relaxed text-gray-300">"Our funnels and landing pages started converting almost immediately. You can tell everything was built with strategy."</p>
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-pink-500 text-xs font-bold text-white">KS</div>
+            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-xs font-bold text-white">KS</div>
             <div class="text-white text-sm font-semibold">Kevin Santos</div>
           </div>
         </div>
@@ -465,7 +466,7 @@
   <!-- ============================== FAQ ============================== -->
   <section id="faq" class="mx-auto max-w-3xl px-6 py-24">
     <div class="text-center" data-scroll>
-      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-purple-400">Questions</p>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">Questions</p>
       <h2 class="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Before you claim a slot</h2>
     </div>
 
@@ -545,11 +546,7 @@
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
       <div>
         <a href="#top" class="group flex items-center gap-2.5">
-          <span class="gradient-bg flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-purple-900/40 transition-transform duration-300 group-hover:scale-105">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-            </svg>
-          </span>
+          <img src="logo.png" alt="Future Builder logo" class="h-14 w-14 rounded-xl object-cover shadow-lg shadow-blue-900/40 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105" />
           <span class="font-display text-lg font-bold leading-none tracking-tight text-white">Future<span class="gradient-text">Builder</span></span>
         </a>
         <p class="mt-3 max-w-xs text-sm leading-relaxed text-gray-500">GoHighLevel, n8n &amp; AI systems that turn leads into booked calls.</p>
@@ -559,7 +556,7 @@
   </footer>
 
   <!-- ============================== STICKY MOBILE CTA ============================== -->
-  <div class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#070711]/90 p-3 backdrop-blur-lg md:hidden">
+  <div class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#060A16]/90 p-3 backdrop-blur-lg md:hidden">
     <a href="#apply" class="spin-border gradient-bg flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white">
       Build your CRM Now for $1,500
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -580,7 +577,7 @@
     const nav = document.getElementById('nav');
     window.addEventListener('scroll', () => {
       const on = window.scrollY > 30;
-      nav.classList.toggle('bg-[#070711]/90', on);
+      nav.classList.toggle('bg-[#060A16]/90', on);
       nav.classList.toggle('backdrop-blur-lg', on);
       nav.classList.toggle('border-b', on);
       nav.classList.toggle('border-white/10', on);
@@ -605,7 +602,7 @@
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const COLORS = ['#a78bfa', '#ec4899', '#f97316'];
+      const COLORS = ['#7DD3FC', '#2E8BF5', '#1D4ED8'];
       const LINK = 140, MOUSE_LINK = 170;
       let w, h, dpr, particles = [], raf, mouse = { x: null, y: null };
 
@@ -632,7 +629,7 @@
             const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy);
             if (d < LINK) {
               ctx.globalAlpha = (1 - d / LINK) * 0.16;
-              ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1;
+              ctx.strokeStyle = '#7DD3FC'; ctx.lineWidth = 1;
               ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
             }
           }

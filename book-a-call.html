@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book a Call | Future Builder</title>
   <meta name="description" content="Book a free discovery call with Future Builder for GoHighLevel, n8n automation, and AI lead systems." />
+  <meta name="theme-color" content="#060A16" />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <script>
@@ -14,16 +17,16 @@
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { background: #070711; font-family: 'Inter', sans-serif; }
+    body { background: #060A16; font-family: 'Inter', sans-serif; }
     .gradient-text {
-      background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f97316 100%);
+      background: linear-gradient(135deg, #7DD3FC 0%, #2E8BF5 50%, #1D4ED8 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
-    .gradient-bg { background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); }
+    .gradient-bg { background: linear-gradient(135deg, #2E8BF5 0%, #1D4ED8 100%); }
     .btn-glow { transition: all 0.3s ease; }
-    .btn-glow:hover { box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); transform: scale(1.04); }
+    .btn-glow:hover { box-shadow: 0 0 30px rgba(56, 189, 248, 0.55); transform: scale(1.04); }
     .card-glow { transition: all 0.3s ease; }
-    .card-glow:hover { box-shadow: 0 0 40px rgba(124, 58, 237, 0.25); transform: translateY(-4px); }
+    .card-glow:hover { box-shadow: 0 0 40px rgba(45, 139, 245, 0.28); transform: translateY(-4px); }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
     .fade-up-1 { animation: fadeUp 0.7s ease-out 0.05s both; }
     .fade-up-2 { animation: fadeUp 0.7s ease-out 0.15s both; }
@@ -31,14 +34,14 @@
     .fade-up-4 { animation: fadeUp 0.7s ease-out 0.35s both; }
 
     /* ===== Ambient animated background ===== */
-    .bg-fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #070711; }
+    .bg-fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #060A16; }
     .bg-fx .orb { position: absolute; border-radius: 9999px; filter: blur(90px); will-change: transform; }
     .bg-fx .orb-1 { width: 540px; height: 540px; top: -140px; left: -120px; opacity: .50;
-      background: radial-gradient(circle at 30% 30%, #7c3aed, transparent 68%); animation: drift1 26s ease-in-out infinite; }
+      background: radial-gradient(circle at 30% 30%, #1D4ED8, transparent 68%); animation: drift1 26s ease-in-out infinite; }
     .bg-fx .orb-2 { width: 500px; height: 500px; top: 28%; right: -160px; opacity: .42;
-      background: radial-gradient(circle at 50% 50%, #ec4899, transparent 68%); animation: drift2 32s ease-in-out infinite; }
+      background: radial-gradient(circle at 50% 50%, #2E8BF5, transparent 68%); animation: drift2 32s ease-in-out infinite; }
     .bg-fx .orb-3 { width: 460px; height: 460px; bottom: -160px; left: 22%; opacity: .34;
-      background: radial-gradient(circle at 50% 50%, #f97316, transparent 68%); animation: drift3 38s ease-in-out infinite; }
+      background: radial-gradient(circle at 50% 50%, #38BDF8, transparent 68%); animation: drift3 38s ease-in-out infinite; }
     .bg-fx .gridfx { position: absolute; inset: -2px;
       background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
       background-size: 58px 58px;
@@ -70,14 +73,10 @@
   </div>
 
   <!-- Nav -->
-  <nav class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#070711]/90 backdrop-blur-lg">
+  <nav class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#060A16]/90 backdrop-blur-lg">
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <a href="index.html" class="group flex items-center gap-2.5">
-        <span class="gradient-bg flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-purple-900/40 transition-transform duration-300 group-hover:scale-105">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-          </svg>
-        </span>
+        <img src="logo.png" alt="Future Builder logo" class="h-14 w-14 rounded-xl object-cover shadow-lg shadow-blue-900/40 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105" />
         <span class="font-display text-lg font-bold leading-none tracking-tight text-white">Future<span class="gradient-text">Builder</span></span>
       </a>
       <a href="index.html" class="inline-flex items-center gap-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
@@ -89,8 +88,8 @@
 
   <!-- Hero / Booking -->
   <section class="relative min-h-screen overflow-hidden px-6 pt-32 pb-20">
-    <div class="pointer-events-none absolute top-1/4 -left-40 h-[500px] w-[500px] rounded-full bg-purple-700/20 blur-3xl"></div>
-    <div class="pointer-events-none absolute bottom-1/4 -right-40 h-[500px] w-[500px] rounded-full bg-pink-600/15 blur-3xl"></div>
+    <div class="pointer-events-none absolute top-1/4 -left-40 h-[500px] w-[500px] rounded-full bg-blue-700/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute bottom-1/4 -right-40 h-[500px] w-[500px] rounded-full bg-sky-500/15 blur-3xl"></div>
 
     <div class="relative mx-auto w-full max-w-3xl text-center">
       <div class="fade-up-1 mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-gray-400">
@@ -107,9 +106,9 @@
 
     <!-- Calendar embed -->
     <div class="fade-up-4 relative mx-auto w-full max-w-3xl">
-      <div class="pointer-events-none absolute -inset-5 rounded-[2.5rem] bg-purple-600/15 blur-3xl"></div>
+      <div class="pointer-events-none absolute -inset-5 rounded-[2.5rem] bg-blue-600/15 blur-3xl"></div>
 
-      <div class="gradient-bg relative rounded-3xl p-[3px] shadow-2xl shadow-purple-900/40">
+      <div class="gradient-bg relative rounded-3xl p-[3px] shadow-2xl shadow-blue-900/40">
         <div class="overflow-hidden rounded-[1.35rem] bg-white">
           <!-- Card header strip -->
           <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
@@ -133,11 +132,7 @@
                  so we overlay on top.) If it sits slightly off, nudge top/left/width/height below. -->
             <span class="pointer-events-none absolute flex items-center gap-2.5 bg-white"
                   style="top:5px; left:10px; width:320px; height:64px; padding-left:6px;">
-              <span class="gradient-bg flex items-center justify-center rounded-full" style="width:40px; height:40px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-                </svg>
-              </span>
+              <img src="logo.png" alt="Future Builder logo" class="rounded-full object-cover" style="width:40px; height:40px;" />
               <span class="font-display" style="font-weight:800; font-size:18px; color:#111827;">Future<span class="gradient-text">Builder</span></span>
             </span>
           </div>
@@ -154,7 +149,7 @@
   <section class="px-6 pb-28">
     <div class="mx-auto max-w-5xl">
       <div class="mb-12 text-center">
-        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-purple-400">How it works</p>
+        <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-sky-400">How it works</p>
         <h2 class="font-display text-3xl font-bold leading-tight text-white md:text-4xl">What to expect <span class="gradient-text">on the call</span></h2>
       </div>
       <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -176,9 +171,9 @@
       </div>
 
       <div class="mt-12 flex flex-wrap justify-center gap-x-10 gap-y-3 text-sm text-gray-500">
-        <span class="inline-flex items-center gap-2"><span class="text-purple-400">●</span> 30 minutes</span>
-        <span class="inline-flex items-center gap-2"><span class="text-pink-400">●</span> Google Meet or phone</span>
-        <span class="inline-flex items-center gap-2"><span class="text-orange-400">●</span> Completely free</span>
+        <span class="inline-flex items-center gap-2"><span class="text-sky-400">●</span> 30 minutes</span>
+        <span class="inline-flex items-center gap-2"><span class="text-sky-400">●</span> Google Meet or phone</span>
+        <span class="inline-flex items-center gap-2"><span class="text-blue-400">●</span> Completely free</span>
       </div>
     </div>
   </section>
@@ -187,11 +182,7 @@
   <footer class="border-t border-white/[0.07] px-6 py-12">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
       <a href="index.html" class="group flex items-center gap-2.5">
-        <span class="gradient-bg flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-purple-900/40 transition-transform duration-300 group-hover:scale-105">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-          </svg>
-        </span>
+        <img src="logo.png" alt="Future Builder logo" class="h-14 w-14 rounded-xl object-cover shadow-lg shadow-blue-900/40 ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-105" />
         <span class="font-display text-lg font-bold leading-none tracking-tight text-white">Future<span class="gradient-text">Builder</span></span>
       </a>
       <p class="text-sm font-semibold leading-relaxed text-gray-400 sm:text-right">Copyright © <span id="year"></span> Future Builder.</p>
@@ -208,7 +199,7 @@
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const COLORS = ['#a78bfa', '#ec4899', '#f97316'];
+      const COLORS = ['#7DD3FC', '#2E8BF5', '#1D4ED8'];
       const LINK = 140, MOUSE_LINK = 170;
       let w, h, dpr, particles = [], raf, mouse = { x: null, y: null };
 
@@ -235,7 +226,7 @@
             const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy);
             if (d < LINK) {
               ctx.globalAlpha = (1 - d / LINK) * 0.16;
-              ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1;
+              ctx.strokeStyle = '#7DD3FC'; ctx.lineWidth = 1;
               ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
             }
           }
