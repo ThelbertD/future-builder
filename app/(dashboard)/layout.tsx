@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import type { ShellData } from "@/components/layout/shell-data";
-import { getActiveWorkspace, getCurrentUser } from "@/lib/supabase/auth";
+import { ensureWorkspaceProvisioned, getActiveWorkspace, getCurrentUser } from "@/lib/supabase/auth";
 import {
   fetchCompanies,
   fetchConversations,
@@ -11,6 +11,10 @@ import {
 import { truncate } from "@/lib/utils";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // Runs before anything reads the workspace, so a confirmed-by-email account
+  // lands on a fully provisioned workspace rather than an empty shell.
+  await ensureWorkspaceProvisioned();
+
   const [user, workspace, notifications, conversations, leads, companies, hotLeads] = await Promise.all([
     getCurrentUser(),
     getActiveWorkspace(),

@@ -95,6 +95,40 @@ export const getActiveWorkspace = cache(async (): Promise<Workspace | null> => {
   };
 });
 
+/**
+ * Guarantees a signed-in user has a workspace.
+ *
+ * Sign-up provisions one immediately, but only when Supabase returns a session.
+ * With email confirmation enabled there is no session at that moment, so the
+ * first authenticated request provisions instead. Safe to call on every
+ * request: it returns early as soon as a membership exists.
+ */
+export const ensureWorkspaceProvisioned = cache(async (): Promise<void> => {
+  if (!isSupabaseConfigured) return;
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return;
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (membership) return;
+
+  const metadataName = auth.user.user_metadata?.full_name as string | undefined;
+  const fallback = metadataName?.split(" ")[0] ?? auth.user.email?.split("@")[0] ?? "My";
+
+  const { error } = await supabase.rpc("create_workspace", {
+    workspace_name: `${fallback}'s workspace`,
+  });
+
+  if (error) console.error("Workspace provisioning failed:", error.message);
+});
+
 /** Workspace id used to scope every query. Null when the user has no workspace. */
 export const getActiveWorkspaceId = cache(async (): Promise<string | null> => {
   const workspace = await getActiveWorkspace();

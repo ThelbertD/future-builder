@@ -409,12 +409,18 @@ async function attachOwner() {
     return;
   }
 
-  const { error: memberError } = await supabase
-    .from("workspace_members")
-    .upsert(
-      { workspace_id: WORKSPACE_UUID, user_id: user.id, role: "owner", status: "active" },
-      { onConflict: "workspace_id,user_id" },
-    );
+  // Signing up provisions a workspace of your own, so backdating this
+  // membership makes the seeded demo workspace the one the app opens into.
+  const { error: memberError } = await supabase.from("workspace_members").upsert(
+    {
+      workspace_id: WORKSPACE_UUID,
+      user_id: user.id,
+      role: "owner",
+      status: "active",
+      joined_at: "2020-01-01T00:00:00.000Z",
+    },
+    { onConflict: "workspace_id,user_id" },
+  );
 
   if (memberError) {
     console.error(`  ✗ workspace_members: ${memberError.message}`);
