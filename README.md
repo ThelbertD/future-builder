@@ -41,6 +41,7 @@ npm run start      # serve the production build
 npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
 npm run seed       # push the demo dataset into Supabase
+npm run supabase:check  # verify credentials, schema and RLS
 ```
 
 ## Architecture

@@ -13,6 +13,8 @@
 import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
+import { loadEnv } from "../../scripts/load-env";
+
 import {
   ACTIVITIES,
   APPOINTMENTS,
@@ -30,6 +32,8 @@ import {
   PIPELINE_STAGES,
   SAVED_SEARCHES,
 } from "../../lib/mock";
+
+loadEnv();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

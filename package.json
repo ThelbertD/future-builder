@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx database/seed/seed.ts"
+    "seed": "tsx database/seed/seed.ts",
+    "supabase:check": "tsx scripts/check-supabase.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
