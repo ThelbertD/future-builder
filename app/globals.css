@@ -1,0 +1,237 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   Future Builder AI — design tokens
+   Semantic tokens only. Never hard-code a color in a component.
+   ============================================================ */
+
+:root {
+  --radius: 0.5rem;
+
+  /* Surfaces */
+  --background: #ffffff;
+  --foreground: #0a0e16;
+  --card: #ffffff;
+  --card-foreground: #0a0e16;
+  --popover: #ffffff;
+  --popover-foreground: #0a0e16;
+
+  /* Brand */
+  --primary: #1d6fe0;
+  --primary-foreground: #ffffff;
+  --primary-subtle: #eef4fe;
+
+  /* Neutrals */
+  --secondary: #f4f6f9;
+  --secondary-foreground: #0a0e16;
+  --muted: #f4f6f9;
+  --muted-foreground: #5c6678;
+  --accent: #eef1f6;
+  --accent-foreground: #0a0e16;
+
+  /* Lines */
+  --border: #e4e8ef;
+  --input: #e4e8ef;
+  --ring: #1d6fe0;
+
+  /* Status */
+  --destructive: #d92d3c;
+  --destructive-foreground: #ffffff;
+  --success: #0f9d68;
+  --success-foreground: #ffffff;
+  --warning: #b57500;
+  --warning-foreground: #ffffff;
+  --info: #1d6fe0;
+
+  /* Priority scale (lead temperature) */
+  --priority-hot: #d9482d;
+  --priority-high: #b57500;
+  --priority-medium: #1d6fe0;
+  --priority-low: #5c6678;
+
+  /* Charts */
+  --chart-1: #1d6fe0;
+  --chart-2: #0f9d68;
+  --chart-3: #8b5cf6;
+  --chart-4: #b57500;
+  --chart-5: #64748b;
+
+  /* Sidebar */
+  --sidebar: #fbfcfd;
+  --sidebar-foreground: #0a0e16;
+  --sidebar-border: #e4e8ef;
+  --sidebar-accent: #eef1f6;
+  --sidebar-accent-foreground: #0a0e16;
+}
+
+.dark {
+  /* Surfaces — near-black, slightly cool */
+  --background: #06090f;
+  --foreground: #e9edf4;
+  --card: #0b0f17;
+  --card-foreground: #e9edf4;
+  --popover: #0d121c;
+  --popover-foreground: #e9edf4;
+
+  /* Brand */
+  --primary: #2e8bf5;
+  --primary-foreground: #04070d;
+  --primary-subtle: #0f1a2b;
+
+  /* Neutrals */
+  --secondary: #121826;
+  --secondary-foreground: #e9edf4;
+  --muted: #101623;
+  --muted-foreground: #8b95a7;
+  --accent: #151c2b;
+  --accent-foreground: #e9edf4;
+
+  /* Lines */
+  --border: #1a2130;
+  --input: #1a2130;
+  --ring: #2e8bf5;
+
+  /* Status */
+  --destructive: #f0555b;
+  --destructive-foreground: #04070d;
+  --success: #2ed3a0;
+  --success-foreground: #04070d;
+  --warning: #f5b742;
+  --warning-foreground: #04070d;
+  --info: #7dd3fc;
+
+  /* Priority scale */
+  --priority-hot: #ff6a4d;
+  --priority-high: #f5b742;
+  --priority-medium: #2e8bf5;
+  --priority-low: #8b95a7;
+
+  /* Charts */
+  --chart-1: #2e8bf5;
+  --chart-2: #2ed3a0;
+  --chart-3: #a78bfa;
+  --chart-4: #f5b742;
+  --chart-5: #7dd3fc;
+
+  /* Sidebar */
+  --sidebar: #080c13;
+  --sidebar-foreground: #e9edf4;
+  --sidebar-border: #161d2a;
+  --sidebar-accent: #121826;
+  --sidebar-accent-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-priority-hot: var(--priority-hot);
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 1px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+  --animate-in-up: in-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-thinking: thinking 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.45; }
+}
+@keyframes in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes thinking {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--ring) 65%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Hairline grid used on marketing surfaces */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--muted-foreground) 28%, transparent);
+    border-radius: 999px;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
