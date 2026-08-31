@@ -159,5 +159,3 @@ A brand-new user cannot insert their own first membership row (the insert policy
 ### What still reads demo data
 
 Aggregate analytics (the activity time series, funnel rates, source performance, AI performance) are computed from the bundled dataset even when Supabase is connected — they need event history the schema does not record yet. Dashboard counters, every list, and every detail page read live records.
-
-The previous static marketing site is preserved under `legacy/`.
