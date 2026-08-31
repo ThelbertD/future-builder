@@ -1,20 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/env";
-
 /**
  * Keeps the Supabase auth session fresh on every request.
  *
+ * This file runs on the Edge runtime, where the bundler inlines only what it can
+ * resolve statically — so the environment values are read here directly rather
+ * than imported through the "@/" path alias.
+ *
  * Route protection is intentionally not enforced while the app runs on the
- * bundled demo dataset — enable the redirect below once Supabase Auth is live.
+ * bundled demo dataset. Enable the redirect below once Supabase Auth is live.
  */
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
 
-  if (!isSupabaseConfigured) return response;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  if (!supabaseUrl || !supabaseAnonKey) return response;
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
