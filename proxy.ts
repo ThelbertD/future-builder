@@ -4,18 +4,18 @@ import { createServerClient } from "@supabase/ssr";
 /**
  * Refreshes the Supabase auth session and gates the workspace routes.
  *
- * This file runs on the Edge runtime, where the bundler inlines only what it can
- * resolve statically — so environment values are read here directly rather than
- * imported through the "@/" path alias.
+ * Next 16 replaced the `middleware` convention with `proxy`, which runs on the
+ * Node.js runtime. That matters here: the Supabase client pulled into the Edge
+ * bundle was the source of MIDDLEWARE_INVOCATION_FAILED in production.
  *
  * Two deliberate safety properties:
  *
- * 1. The matcher covers only the routes that need a session. A failure here can
- *    never take down the marketing site, the API routes, or static assets.
- * 2. Any error falls through to the request instead of throwing. Row level
- *    security is the real boundary — a signed-out visitor who slips past this
- *    check still receives an empty workspace — so failing open beats returning
- *    a 500 for the entire application.
+ * 1. The matcher covers only the routes that need a session, so a failure here
+ *    can never take down the marketing site, the API routes or static assets.
+ * 2. Any error falls through to the request instead of throwing. This is a
+ *    convenience layer, not the security boundary — the dashboard layout
+ *    redirects signed-out users and row level security scopes every query — so
+ *    failing open beats returning a 500 for the whole application.
  */
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -53,7 +53,7 @@ function readSupabaseUrl(value: string | undefined): string | null {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
 
   const supabaseUrl = readSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -94,7 +94,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   } catch (error) {
-    console.error("Auth middleware failed, letting the request through:", error);
+    console.error("Auth proxy failed, letting the request through:", error);
   }
 
   return response;

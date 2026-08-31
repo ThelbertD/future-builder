@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { AppShell } from "@/components/layout/app-shell";
 import type { ShellData } from "@/components/layout/shell-data";
 import { ensureWorkspaceProvisioned, getActiveWorkspace, getCurrentUser } from "@/lib/supabase/auth";
@@ -11,12 +13,17 @@ import {
 import { truncate } from "@/lib/utils";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // The real gate. The proxy redirects earlier for a better experience, but it
+  // fails open by design, so authentication is enforced here as well. In demo
+  // mode (no Supabase configured) getCurrentUser returns the demo user.
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   // Runs before anything reads the workspace, so a confirmed-by-email account
   // lands on a fully provisioned workspace rather than an empty shell.
   await ensureWorkspaceProvisioned();
 
-  const [user, workspace, notifications, conversations, leads, companies, hotLeads] = await Promise.all([
-    getCurrentUser(),
+  const [workspace, notifications, conversations, leads, companies, hotLeads] = await Promise.all([
     getActiveWorkspace(),
     fetchNotifications(),
     fetchConversations(),
@@ -27,10 +34,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const data: ShellData = {
     user: {
-      id: user?.id ?? "anonymous",
-      fullName: user?.fullName ?? "There",
-      email: user?.email ?? "",
-      jobTitle: user?.jobTitle,
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      jobTitle: user.jobTitle,
     },
     workspace: workspace ? { id: workspace.id, name: workspace.name, plan: workspace.plan } : null,
     notifications,
