@@ -17,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NOTIFICATIONS } from "@/lib/mock";
+import { useShellData } from "@/components/layout/shell-data";
 import { cn, formatRelative } from "@/lib/utils";
 import type { NotificationKind } from "@/types";
 
@@ -41,7 +41,8 @@ const TONES: Record<NotificationKind, string> = {
 
 export function NotificationsMenu() {
   const router = useRouter();
-  const [items, setItems] = React.useState(NOTIFICATIONS);
+  const { notifications } = useShellData();
+  const [items, setItems] = React.useState(notifications);
   const unread = items.filter((item) => !item.read).length;
 
   const markAllRead = () => setItems((current) => current.map((item) => ({ ...item, read: true })));

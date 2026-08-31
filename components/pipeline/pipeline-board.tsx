@@ -14,19 +14,27 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import { nowIso } from "@/lib/utils";
+
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { PipelineCardContent } from "@/components/pipeline/pipeline-card";
 import { PipelineColumn } from "@/components/pipeline/pipeline-column";
 import { StageDialog } from "@/components/pipeline/stage-dialog";
-import { PIPELINE_ID } from "@/lib/mock";
 import type { LeadWithRelations, PipelineStage } from "@/types";
 
 interface PipelineBoardProps {
   stages: PipelineStage[];
   leads: LeadWithRelations[];
+  workspaceId: string;
+  pipelineId: string;
 }
 
-export function PipelineBoard({ stages: initialStages, leads: initialLeads }: PipelineBoardProps) {
+export function PipelineBoard({
+  stages: initialStages,
+  leads: initialLeads,
+  workspaceId,
+  pipelineId,
+}: PipelineBoardProps) {
   const [stages, setStages] = React.useState(initialStages);
   const [leads, setLeads] = React.useState(initialLeads);
   const [activeId, setActiveId] = React.useState<string | null>(null);
@@ -52,7 +60,7 @@ export function PipelineBoard({ stages: initialStages, leads: initialLeads }: Pi
 
     setLeads((current) =>
       current.map((item) =>
-        item.id === lead.id ? { ...item, stageId, stageEnteredAt: new Date().toISOString() } : item,
+        item.id === lead.id ? { ...item, stageId, stageEnteredAt: nowIso() } : item,
       ),
     );
     toast.success(`${lead.company.name} moved`, { description: `Now in ${stage.name}.` });
@@ -129,7 +137,8 @@ export function PipelineBoard({ stages: initialStages, leads: initialLeads }: Pi
         open={creating || editing !== null}
         stage={editing}
         position={stages.length}
-        pipelineId={PIPELINE_ID}
+        pipelineId={pipelineId}
+        workspaceId={workspaceId}
         onOpenChange={(open) => {
           if (!open) {
             setCreating(false);

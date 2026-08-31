@@ -10,8 +10,8 @@ import { IntentBadge, ScoreMeter } from "@/components/common/indicators";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { HOT_LEADS } from "@/lib/mock";
-import { cn } from "@/lib/utils";
+import { useShellData } from "@/components/layout/shell-data";
+import { cn, createLocalId } from "@/lib/utils";
 import type { LeadWithRelations } from "@/types";
 
 interface AssistantMessage {
@@ -50,20 +50,21 @@ const RESPONSES: Array<{ match: RegExp; body: string; withLeads?: boolean }> = [
   },
 ];
 
-function answerFor(question: string): AssistantMessage {
+function answerFor(question: string, hotLeads: LeadWithRelations[]): AssistantMessage {
   const match = RESPONSES.find((response) => response.match.test(question));
   return {
-    id: `ai_${Date.now()}`,
+    id: createLocalId("ai"),
     author: "ai",
     body:
       match?.body ??
       "I can analyse leads, draft outreach, summarise a conversation, or recommend the next action on any opportunity. Ask about a specific lead, stage, or source and I will pull the relevant records.",
-    leads: match?.withLeads ? HOT_LEADS.slice(0, 3) : undefined,
+    leads: match?.withLeads ? hotLeads.slice(0, 3) : undefined,
   };
 }
 
 export function AIAssistantPanel() {
   const { assistantOpen, setAssistantOpen } = useShell();
+  const { hotLeads } = useShellData();
   const [input, setInput] = React.useState("");
   const [thinking, setThinking] = React.useState(false);
   const [messages, setMessages] = React.useState<AssistantMessage[]>([
@@ -74,16 +75,19 @@ export function AIAssistantPanel() {
     },
   ]);
 
-  const send = React.useCallback((question: string) => {
-    if (!question.trim()) return;
-    setMessages((current) => [...current, { id: `user_${Date.now()}`, author: "user", body: question }]);
-    setInput("");
-    setThinking(true);
-    window.setTimeout(() => {
-      setMessages((current) => [...current, answerFor(question)]);
-      setThinking(false);
-    }, 750);
-  }, []);
+  const send = React.useCallback(
+    (question: string) => {
+      if (!question.trim()) return;
+      setMessages((current) => [...current, { id: createLocalId("user"), author: "user", body: question }]);
+      setInput("");
+      setThinking(true);
+      window.setTimeout(() => {
+        setMessages((current) => [...current, answerFor(question, hotLeads)]);
+        setThinking(false);
+      }, 750);
+    },
+    [hotLeads],
+  );
 
   return (
     <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>

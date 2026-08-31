@@ -1,14 +1,15 @@
 import { AIBadge } from "@/components/ai/ai-badge";
-import { ACTIVITIES } from "@/lib/mock";
 import { formatRelative } from "@/lib/utils";
+import type { Activity } from "@/types";
 
-export function ActivityTimeline({ leadId }: { leadId: string }) {
-  const entries = ACTIVITIES.filter((activity) => activity.leadId === leadId);
-  const timeline = entries.length > 0 ? entries : ACTIVITIES.slice(0, 4);
+export function ActivityTimeline({ activities }: { activities: Activity[] }) {
+  if (activities.length === 0) {
+    return <p className="text-[13px] text-muted-foreground">No activity recorded yet.</p>;
+  }
 
   return (
     <ol className="relative space-y-4 border-l border-border pl-4">
-      {timeline.map((activity) => (
+      {activities.map((activity) => (
         <li key={activity.id} className="relative">
           <span className="absolute top-1.5 -left-[21px] size-1.5 rounded-full bg-border ring-4 ring-card" />
           <div className="flex items-center gap-2">

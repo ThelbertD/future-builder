@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { signOut } from "@/app/(auth)/actions";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
+import { useShellData } from "@/components/layout/shell-data";
 import { useShell } from "@/components/layout/shell-context";
 import { Wordmark } from "@/components/layout/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,7 +38,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useModifierKey } from "@/hooks/use-platform";
 import { useMounted } from "@/hooks/use-mounted";
-import { CURRENT_USER } from "@/lib/mock";
 import { initials } from "@/lib/utils";
 
 export function Topbar() {
@@ -173,18 +174,19 @@ function ThemeToggle() {
 
 function UserMenu() {
   const router = useRouter();
+  const { user } = useShellData();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="ml-1 rounded-full outline-none">
         <Avatar>
-          <AvatarFallback>{initials(CURRENT_USER.fullName)}</AvatarFallback>
+          <AvatarFallback>{initials(user.fullName)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <div className="px-2 py-1.5">
-          <p className="text-[13px] font-medium">{CURRENT_USER.fullName}</p>
-          <p className="text-[12px] text-muted-foreground">{CURRENT_USER.email}</p>
+          <p className="text-[13px] font-medium">{user.fullName}</p>
+          <p className="text-[12px] text-muted-foreground">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push("/settings")}>
@@ -197,7 +199,7 @@ function UserMenu() {
           Invite teammates
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => router.push("/login")}>
+        <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
           <LogOut />
           Sign out
         </DropdownMenuItem>

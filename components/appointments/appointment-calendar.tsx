@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, formatTime, MOCK_NOW } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import type { Appointment, AppointmentStatus, LeadWithRelations } from "@/types";
 
 type CalendarView = "month" | "week" | "day" | "agenda";
@@ -68,12 +68,15 @@ function dayLabel(date: Date): string {
 interface CalendarProps {
   appointments: Appointment[];
   leads: LeadWithRelations[];
+  /** Server-rendered date so the highlighted day never disagrees on hydration. */
+  todayIso: string;
 }
 
-export function AppointmentCalendar({ appointments: initial, leads }: CalendarProps) {
+export function AppointmentCalendar({ appointments: initial, leads, todayIso }: CalendarProps) {
+  const today = React.useMemo(() => utcDay(new Date(todayIso)), [todayIso]);
   const [appointments, setAppointments] = React.useState(initial);
   const [view, setView] = React.useState<CalendarView>("month");
-  const [cursor, setCursor] = React.useState<Date>(() => utcDay(MOCK_NOW));
+  const [cursor, setCursor] = React.useState<Date>(today);
   const [creating, setCreating] = React.useState(false);
 
   const byDay = React.useMemo(() => {
@@ -109,7 +112,7 @@ export function AppointmentCalendar({ appointments: initial, leads }: CalendarPr
           <Button variant="outline" size="icon-sm" onClick={() => step(1)} aria-label="Next">
             <ChevronRight />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setCursor(utcDay(MOCK_NOW))}>
+          <Button variant="ghost" size="sm" onClick={() => setCursor(today)}>
             Today
           </Button>
         </div>
@@ -132,7 +135,17 @@ export function AppointmentCalendar({ appointments: initial, leads }: CalendarPr
         </div>
       </div>
 
-      {view === "month" ? <MonthView cursor={cursor} byDay={byDay} onPickDay={(date) => { setCursor(date); setView("day"); }} /> : null}
+      {view === "month" ? (
+        <MonthView
+          cursor={cursor}
+          today={today}
+          byDay={byDay}
+          onPickDay={(date) => {
+            setCursor(date);
+            setView("day");
+          }}
+        />
+      ) : null}
       {view === "week" ? <WeekView cursor={cursor} byDay={byDay} /> : null}
       {view === "day" ? <DayView cursor={cursor} byDay={byDay} /> : null}
       {view === "agenda" ? <AgendaView appointments={appointments} /> : null}
@@ -141,6 +154,7 @@ export function AppointmentCalendar({ appointments: initial, leads }: CalendarPr
         open={creating}
         onOpenChange={setCreating}
         leads={leads}
+        defaultDate={todayIso.slice(0, 10)}
         onCreate={(appointment) => setAppointments((current) => [...current, appointment])}
       />
     </div>
@@ -165,17 +179,19 @@ function AppointmentChip({ appointment }: { appointment: Appointment }) {
 
 function MonthView({
   cursor,
+  today,
   byDay,
   onPickDay,
 }: {
   cursor: Date;
+  today: Date;
   byDay: Record<string, Appointment[]>;
   onPickDay: (date: Date) => void;
 }) {
   const monthStart = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), 1));
   const gridStart = startOfWeek(monthStart);
   const days = Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
-  const today = key(utcDay(MOCK_NOW));
+  const todayKey = key(today);
 
   return (
     <Card className="overflow-hidden p-0">
@@ -205,7 +221,7 @@ function MonthView({
               <span
                 className={cn(
                   "inline-flex size-5 items-center justify-center rounded-full text-[11px] tabular-nums",
-                  dayKey === today ? "bg-primary text-primary-foreground" : inMonth ? "" : "text-muted-foreground",
+                  dayKey === todayKey ? "bg-primary text-primary-foreground" : inMonth ? "" : "text-muted-foreground",
                 )}
               >
                 {day.getUTCDate()}

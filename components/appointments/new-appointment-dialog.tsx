@@ -22,8 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { MOCK_NOW } from "@/lib/utils";
-import { WORKSPACE_ID } from "@/lib/mock";
+import { createLocalId, nowIso } from "@/lib/utils";
 import type { Appointment, LeadWithRelations, MeetingType } from "@/types";
 
 const MEETING_TYPES: MeetingType[] = [
@@ -38,13 +37,20 @@ interface NewAppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leads: LeadWithRelations[];
+  defaultDate: string;
   onCreate: (appointment: Appointment) => void;
 }
 
-export function NewAppointmentDialog({ open, onOpenChange, leads, onCreate }: NewAppointmentDialogProps) {
+export function NewAppointmentDialog({
+  open,
+  onOpenChange,
+  leads,
+  defaultDate,
+  onCreate,
+}: NewAppointmentDialogProps) {
   const [leadId, setLeadId] = React.useState(leads[0]?.id ?? "");
   const [meetingType, setMeetingType] = React.useState<MeetingType>("Discovery Call");
-  const [date, setDate] = React.useState(MOCK_NOW.toISOString().slice(0, 10));
+  const [date, setDate] = React.useState(defaultDate);
   const [time, setTime] = React.useState("14:00");
   const [duration, setDuration] = React.useState("30");
   const [notes, setNotes] = React.useState("");
@@ -55,8 +61,8 @@ export function NewAppointmentDialog({ open, onOpenChange, leads, onCreate }: Ne
 
     const startsAt = new Date(`${date}T${time}:00.000Z`);
     const appointment: Appointment = {
-      id: `apt_local_${Date.now()}`,
-      workspaceId: WORKSPACE_ID,
+      id: createLocalId("apt"),
+      workspaceId: lead.workspaceId,
       leadId: lead.id,
       companyId: lead.companyId,
       contactId: lead.contactId,
@@ -68,7 +74,7 @@ export function NewAppointmentDialog({ open, onOpenChange, leads, onCreate }: Ne
       location: "Google Meet",
       notes: notes || undefined,
       bookedByAI: false,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso(),
     };
 
     onCreate(appointment);

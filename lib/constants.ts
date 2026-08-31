@@ -162,3 +162,14 @@ export const INTENT_LABELS: Record<string, string> = {
   medium: "Medium",
   low: "Low",
 };
+
+/** Milestone stages shown in the compact dashboard pipeline strip. */
+export const DASHBOARD_STAGE_NAMES = [
+  "New",
+  "AI Qualified",
+  "Contacted",
+  "Replied",
+  "Interested",
+  "Appointment Booked",
+  "Won",
+];

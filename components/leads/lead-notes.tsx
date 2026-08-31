@@ -5,8 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { CURRENT_USER } from "@/lib/mock";
-import { formatRelative, MOCK_NOW } from "@/lib/utils";
+import { createLocalId, formatRelative, MOCK_NOW, nowIso } from "@/lib/utils";
 
 interface Note {
   id: string;
@@ -15,13 +14,13 @@ interface Note {
   createdAt: string;
 }
 
-export function LeadNotes({ initialNote }: { initialNote?: string }) {
+export function LeadNotes({ initialNote, authorName }: { initialNote?: string; authorName: string }) {
   const [notes, setNotes] = React.useState<Note[]>(
     initialNote
       ? [
           {
             id: "note_seed",
-            author: CURRENT_USER.fullName,
+            author: authorName,
             body: initialNote,
             createdAt: new Date(MOCK_NOW.getTime() - 36 * 3_600_000).toISOString(),
           },
@@ -33,7 +32,7 @@ export function LeadNotes({ initialNote }: { initialNote?: string }) {
   const add = () => {
     if (!draft.trim()) return;
     setNotes((current) => [
-      { id: `note_${current.length + 1}`, author: CURRENT_USER.fullName, body: draft.trim(), createdAt: new Date().toISOString() },
+      { id: createLocalId("note"), author: authorName, body: draft.trim(), createdAt: nowIso() },
       ...current,
     ]);
     setDraft("");

@@ -8,6 +8,7 @@ import { ChevronsUpDown, Plus } from "lucide-react";
 import { AIStatusDot } from "@/components/ai/ai-badge";
 import { Wordmark } from "@/components/layout/logo";
 import { useShell } from "@/components/layout/shell-context";
+import { useShellData } from "@/components/layout/shell-data";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -18,8 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NAV_GROUPS } from "@/lib/constants";
-import { CURRENT_WORKSPACE, UNREAD_CONVERSATION_COUNT } from "@/lib/mock";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 
 function isActive(pathname: string, href: string, match?: string) {
   if (pathname === href) return true;
@@ -29,6 +29,7 @@ function isActive(pathname: string, href: string, match?: string) {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { unreadConversations } = useShellData();
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -46,7 +47,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {group.items.map((item) => {
                 const active = isActive(pathname, item.href, item.match);
                 const Icon = item.icon;
-                const unread = item.href === "/conversations" ? UNREAD_CONVERSATION_COUNT : 0;
+                const unread = item.href === "/conversations" ? unreadConversations : 0;
 
                 return (
                   <li key={item.href}>
@@ -91,6 +92,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function WorkspaceSwitcher() {
+  const { workspace } = useShellData();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-sidebar-accent/60">
@@ -100,10 +103,12 @@ function WorkspaceSwitcher() {
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
         <DropdownMenuItem className="justify-between">
-          {CURRENT_WORKSPACE.name}
-          <Badge variant="primary" className="capitalize">
-            {CURRENT_WORKSPACE.plan}
-          </Badge>
+          {workspace?.name ?? "No workspace"}
+          {workspace ? (
+            <Badge variant="primary" className="capitalize">
+              {workspace.plan}
+            </Badge>
+          ) : null}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
@@ -117,6 +122,7 @@ function WorkspaceSwitcher() {
 
 function AgentStatus() {
   const { setAssistantOpen } = useShell();
+  const { activeAgentTasks } = useShellData();
 
   return (
     <div className="border-t border-sidebar-border p-2">
@@ -130,7 +136,9 @@ function AgentStatus() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[12px] font-medium">AI Agent</span>
-          <span className="block text-[11px] text-success">Online · 3 tasks running</span>
+          <span className="block text-[11px] text-success">
+            Online · {pluralize(activeAgentTasks, "lead")} in queue
+          </span>
         </span>
       </button>
     </div>

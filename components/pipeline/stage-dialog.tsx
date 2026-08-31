@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, slugify } from "@/lib/utils";
 import type { PipelineStage } from "@/types";
-import { WORKSPACE_ID } from "@/lib/mock";
 
 const COLOR_TOKENS = ["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"];
 
@@ -24,11 +23,20 @@ interface StageDialogProps {
   stage: PipelineStage | null;
   position: number;
   pipelineId: string;
+  workspaceId: string;
   onOpenChange: (open: boolean) => void;
   onSave: (stage: PipelineStage) => void;
 }
 
-export function StageDialog({ open, stage, position, pipelineId, onOpenChange, onSave }: StageDialogProps) {
+export function StageDialog({
+  open,
+  stage,
+  position,
+  pipelineId,
+  workspaceId,
+  onOpenChange,
+  onSave,
+}: StageDialogProps) {
   // Initialised from props; the parent remounts this dialog with a key so a
   // different stage always starts from fresh state.
   const [name, setName] = React.useState(stage?.name ?? "");
@@ -39,7 +47,7 @@ export function StageDialog({ open, stage, position, pipelineId, onOpenChange, o
     if (!name.trim()) return;
     onSave({
       id: stage?.id ?? `stg_${slugify(name)}_${position}`,
-      workspaceId: stage?.workspaceId ?? WORKSPACE_ID,
+      workspaceId: stage?.workspaceId ?? workspaceId,
       pipelineId,
       name: name.trim(),
       colorToken,

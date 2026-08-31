@@ -2,15 +2,32 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Keeps the Supabase auth session fresh on every request.
+ * Refreshes the Supabase auth session on every request and gates the workspace.
  *
  * This file runs on the Edge runtime, where the bundler inlines only what it can
- * resolve statically — so the environment values are read here directly rather
- * than imported through the "@/" path alias.
+ * resolve statically — so environment values are read here directly rather than
+ * imported through the "@/" path alias.
  *
- * Route protection is intentionally not enforced while the app runs on the
- * bundled demo dataset. Enable the redirect below once Supabase Auth is live.
+ * With no Supabase credentials configured the app runs on its bundled demo
+ * dataset and every route stays open.
  */
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/finder",
+  "/leads",
+  "/pipeline",
+  "/companies",
+  "/conversations",
+  "/outreach",
+  "/appointments",
+  "/analytics",
+  "/ai-settings",
+  "/integrations",
+  "/settings",
+];
+
+const AUTH_ROUTES = ["/login", "/signup"];
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
 
@@ -30,16 +47,28 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  // getUser() revalidates the token with Supabase, which also refreshes the
+  // auth cookies written onto the response above.
+  const { data } = await supabase.auth.getUser();
+  const { pathname } = request.nextUrl;
 
-  // const { data } = await supabase.auth.getUser();
-  // if (!data.user && request.nextUrl.pathname.startsWith("/dashboard")) {
-  //   return NextResponse.redirect(new URL("/login", request.url));
-  // }
+  const needsAuth = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+  if (!data.user && needsAuth) {
+    const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (data.user && AUTH_ROUTES.includes(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

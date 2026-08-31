@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CURRENT_USER, CURRENT_WORKSPACE, PIPELINE_STAGES, WORKSPACE_MEMBERS } from "@/lib/mock";
+import type { PipelineStage, User as UserRecord, Workspace, WorkspaceMember } from "@/types";
 import { cn, formatDate, initials } from "@/lib/utils";
 
 const SECTIONS = [
@@ -102,7 +102,14 @@ function ToggleRow({
   );
 }
 
-export function SettingsView() {
+interface SettingsViewProps {
+  user: UserRecord;
+  workspace: Workspace | null;
+  members: WorkspaceMember[];
+  stages: PipelineStage[];
+}
+
+export function SettingsView({ user, workspace, members, stages }: SettingsViewProps) {
   const [section, setSection] = React.useState<SectionId>("profile");
 
   return (
@@ -133,7 +140,7 @@ export function SettingsView() {
           <Panel title="Profile" description="How you appear to your team across the workspace." footer={<SaveButton />}>
             <div className="flex items-center gap-3">
               <Avatar className="size-12">
-                <AvatarFallback className="text-[15px]">{initials(CURRENT_USER.fullName)}</AvatarFallback>
+                <AvatarFallback className="text-[15px]">{initials(user.fullName)}</AvatarFallback>
               </Avatar>
               <Button variant="outline" size="sm">
                 Change photo
@@ -142,19 +149,19 @@ export function SettingsView() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="full-name">Full name</Label>
-                <Input id="full-name" defaultValue={CURRENT_USER.fullName} />
+                <Input id="full-name" defaultValue={user.fullName} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={CURRENT_USER.email} />
+                <Input id="email" type="email" defaultValue={user.email} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="job-title">Job title</Label>
-                <Input id="job-title" defaultValue={CURRENT_USER.jobTitle} />
+                <Input id="job-title" defaultValue={user.jobTitle} />
               </div>
               <div className="space-y-1.5">
                 <Label>Timezone</Label>
-                <Select defaultValue={CURRENT_USER.timezone}>
+                <Select defaultValue={user.timezone}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -179,16 +186,16 @@ export function SettingsView() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="workspace-name">Name</Label>
-                <Input id="workspace-name" defaultValue={CURRENT_WORKSPACE.name} />
+                <Input id="workspace-name" defaultValue={workspace?.name ?? ""} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="workspace-slug">Slug</Label>
-                <Input id="workspace-slug" defaultValue={CURRENT_WORKSPACE.slug} />
+                <Input id="workspace-slug" defaultValue={workspace?.slug ?? ""} />
               </div>
             </div>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
-              Workspace ID <code className="font-mono text-[11px]">{CURRENT_WORKSPACE.id}</code> · created{" "}
-              {formatDate(CURRENT_WORKSPACE.createdAt)}
+              Workspace ID <code className="font-mono text-[11px]">{workspace?.id ?? "—"}</code> · created{" "}
+              {workspace ? formatDate(workspace.createdAt) : "—"}
             </div>
           </Panel>
         ) : null}
@@ -205,7 +212,7 @@ export function SettingsView() {
             }
           >
             <ul className="divide-y divide-border rounded-md border border-border">
-              {WORKSPACE_MEMBERS.map((member) => (
+              {members.map((member) => (
                 <li key={member.id} className="flex items-center gap-3 p-3">
                   <Avatar>
                     <AvatarFallback>{initials(member.user.fullName)}</AvatarFallback>
@@ -262,7 +269,7 @@ export function SettingsView() {
             }
           >
             <ul className="divide-y divide-border rounded-md border border-border">
-              {PIPELINE_STAGES.map((stage) => (
+              {stages.map((stage) => (
                 <li key={stage.id} className="flex items-center gap-3 px-3 py-2">
                   <StageDot colorToken={stage.colorToken} />
                   <span className="flex-1 text-[13px]">{stage.name}</span>
@@ -363,7 +370,7 @@ export function SettingsView() {
           >
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
               <div>
-                <p className="text-[13px] font-medium capitalize">{CURRENT_WORKSPACE.plan} plan</p>
+                <p className="text-[13px] font-medium capitalize">{workspace?.plan ?? "starter"} plan</p>
                 <p className="text-[12px] text-muted-foreground">Billed monthly · renews in 12 days</p>
               </div>
               <Button size="sm" className="ml-auto">

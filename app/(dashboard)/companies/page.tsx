@@ -5,19 +5,20 @@ import { CompaniesTable } from "@/components/companies/companies-table";
 import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { COMPANIES, CONTACTS } from "@/lib/mock";
+import { fetchCompanies, fetchContacts } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = { title: "Companies" };
 
-export default function CompaniesPage() {
-  const clients = COMPANIES.filter((company) => company.status === "client").length;
-  const engaged = COMPANIES.filter((company) => company.status === "engaged").length;
+export default async function CompaniesPage() {
+  const [companies, contacts] = await Promise.all([fetchCompanies(), fetchContacts()]);
+  const clients = companies.filter((company) => company.status === "client").length;
+  const engaged = companies.filter((company) => company.status === "engaged").length;
 
   return (
     <PageContainer>
       <PageHeader
         title="Companies"
-        description={`${COMPANIES.length} companies tracked · ${engaged} engaged · ${clients} clients.`}
+        description={`${companies.length} companies tracked · ${engaged} engaged · ${clients} clients.`}
         actions={
           <Button size="sm">
             <Plus />
@@ -25,7 +26,7 @@ export default function CompaniesPage() {
           </Button>
         }
       />
-      <CompaniesTable companies={COMPANIES} contacts={CONTACTS} />
+      <CompaniesTable companies={companies} contacts={contacts} />
     </PageContainer>
   );
 }

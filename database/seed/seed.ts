@@ -356,11 +356,69 @@ async function main() {
     })),
   );
 
+  await attachOwner();
+
   console.log(
     process.exitCode === 1
       ? "\nSeed finished with errors."
       : "\nSeed complete. Set NEXT_PUBLIC_USE_MOCK_DATA=false to read from Supabase.",
   );
+}
+
+/**
+ * Row level security scopes every table to workspace membership, so the seeded
+ * data stays invisible until a real account is attached to the demo workspace.
+ * Set SEED_OWNER_EMAIL to the address you signed up with.
+ */
+async function attachOwner() {
+  const email = process.env.SEED_OWNER_EMAIL?.trim().toLowerCase();
+
+  if (!email) {
+    console.log("\n  ! SEED_OWNER_EMAIL not set — sign up in the app, then re-run the seed to see this data.");
+    return;
+  }
+
+  const { data, error } = await supabase.auth.admin.listUsers({ perPage: 200 });
+
+  if (error) {
+    console.error(`  ✗ could not list users: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const user = data.users.find((candidate) => candidate.email?.toLowerCase() === email);
+
+  if (!user) {
+    console.log(`  ! no account found for ${email} — sign up in the app first, then re-run the seed.`);
+    return;
+  }
+
+  const fullName = (user.user_metadata?.full_name as string | undefined) ?? email.split("@")[0];
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, email, full_name: fullName }, { onConflict: "id" });
+
+  if (profileError) {
+    console.error(`  ✗ profiles: ${profileError.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const { error: memberError } = await supabase
+    .from("workspace_members")
+    .upsert(
+      { workspace_id: WORKSPACE_UUID, user_id: user.id, role: "owner", status: "active" },
+      { onConflict: "workspace_id,user_id" },
+    );
+
+  if (memberError) {
+    console.error(`  ✗ workspace_members: ${memberError.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(`  ✓ ${email} is now owner of the demo workspace`);
 }
 
 main().catch((error) => {

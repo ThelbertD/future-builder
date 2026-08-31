@@ -25,20 +25,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getLeadById, LEADS_WITH_RELATIONS } from "@/lib/mock";
+import { getCurrentUser } from "@/lib/supabase/auth";
+import { fetchActivitiesByLead, fetchLead, fetchPipelineStages } from "@/lib/supabase/queries";
 import { formatCurrency, formatDate, formatRelative } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  return LEADS_WITH_RELATIONS.map((lead) => ({ id: lead.id }));
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const lead = getLeadById(id);
+  const lead = await fetchLead(id);
   return { title: lead ? `${lead.company.name} — Lead` : "Lead" };
 }
 
@@ -53,9 +50,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function LeadDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const lead = getLeadById(id);
+  const [lead, stages, user] = await Promise.all([fetchLead(id), fetchPipelineStages(), getCurrentUser()]);
 
   if (!lead) notFound();
+
+  const activities = await fetchActivitiesByLead(lead.id);
 
   const { company, contact, jobPost, analysis } = lead;
 
@@ -215,7 +214,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
               <h2 className="text-[15px] font-semibold tracking-tight">Notes</h2>
             </div>
             <div className="p-4">
-              <LeadNotes initialNote={lead.notes || undefined} />
+              <LeadNotes initialNote={lead.notes || undefined} authorName={user?.fullName ?? "You"} />
             </div>
           </Card>
 
@@ -224,7 +223,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
               <h2 className="text-[15px] font-semibold tracking-tight">Activity</h2>
             </div>
             <div className="p-4">
-              <ActivityTimeline leadId={lead.id} />
+              <ActivityTimeline activities={activities} />
             </div>
           </Card>
         </div>
@@ -238,14 +237,14 @@ export default async function LeadDetailPage({ params }: PageProps) {
             <div className="space-y-3 p-4">
               <div>
                 <p className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Stage</p>
-                <LeadStageControl leadId={lead.id} stageId={lead.stageId} />
+                <LeadStageControl leadId={lead.id} stageId={lead.stageId} stages={stages} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Score">
                   <ScoreMeter score={lead.score} />
                 </Field>
                 <Field label="Time in stage">{formatRelative(lead.stageEnteredAt).replace(" ago", "")}</Field>
-                <Field label="Owner">{lead.ownerId === "usr_marisol" ? "Marisol Vega" : "Thelbert Delos Reyes"}</Field>
+                <Field label="Owner">{user?.fullName ?? "Unassigned"}</Field>
                 <Field label="Last activity">{formatRelative(lead.lastActivityAt)}</Field>
               </div>
               {lead.tags.length > 0 ? (

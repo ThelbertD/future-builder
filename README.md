@@ -80,28 +80,67 @@ The demo dataset is generated against a fixed clock (`MOCK_NOW` in `lib/utils.ts
 
 ## Supabase
 
-1. Create a project and run the migrations in order:
-   - `database/migrations/0001_schema.sql`
-   - `database/migrations/0002_rls.sql`
-2. Copy `.env.example` to `.env.local` and fill in the values.
-3. Seed the demo data:
+The app runs on the bundled dataset out of the box. Connecting Supabase takes five steps.
 
-   ```bash
-   npm run seed
-   ```
+### 1. Create a project
 
-4. Set `NEXT_PUBLIC_USE_MOCK_DATA=false` once the query layer is pointed at Supabase.
+Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard). Pick a region close to you and save the database password somewhere safe.
+
+### 2. Run the migrations
+
+Open **SQL Editor** in the Supabase dashboard and run these files in order, one at a time:
+
+| File | What it creates |
+| --- | --- |
+| `database/migrations/0001_schema.sql` | Enums, 19 tables, indexes, the profile trigger |
+| `database/migrations/0002_rls.sql` | Row level security and the membership helper functions |
+| `database/migrations/0003_provisioning.sql` | `create_workspace()`, which bootstraps a workspace, its owner, and the default pipeline |
+
+### 3. Add your credentials
+
+Copy `.env.example` to `.env.local` and fill in the values from **Settings → API**:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon public key>
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
+SEED_OWNER_EMAIL=you@example.com
+NEXT_PUBLIC_USE_MOCK_DATA=false
+```
+
+`.env.local` is gitignored. The service role key is only ever read by the seed script and never reaches the browser.
+
+### 4. Create your account
+
+Run `npm run dev` and sign up at `/signup`. Signing up creates your profile, a workspace, and the twelve default pipeline stages in one transaction.
+
+If email confirmation is enabled (the Supabase default), confirm the email before signing in. To skip that while developing, turn off **Authentication → Sign In / Providers → Confirm email**.
+
+### 5. Load the demo data (optional)
+
+```bash
+npm run seed
+```
+
+This writes the 30 companies, 50 contacts, 75 opportunities, 40 leads, 20 conversations and 15 appointments into your project, and makes `SEED_OWNER_EMAIL` an owner of that demo workspace so row level security lets you see it. Re-running updates the same rows instead of duplicating them.
+
+### Deploying
+
+Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_USE_MOCK_DATA=false` to your hosting environment variables. Leave `SUPABASE_SERVICE_ROLE_KEY` out unless a server-side job needs it.
 
 ### Multi-tenancy
 
 Every tenant table carries `workspace_id`. Row level security restricts reads to active members of the workspace, writes to `owner`/`admin`/`member`, and deletes to `owner`/`admin` — viewers are read-only. Membership is resolved through `public.is_workspace_member()`, `can_write_workspace()` and `can_admin_workspace()`.
 
+A brand-new user cannot insert their own first membership row (the insert policy requires an existing admin), so workspace creation goes through the `create_workspace()` security-definer function instead.
+
 ### Security
 
 - The browser only ever receives `NEXT_PUBLIC_SUPABASE_URL` and the anon key.
-- `SUPABASE_SERVICE_ROLE_KEY` and AI provider keys are read server-side only (`lib/supabase/admin.ts` is marked `server-only`).
-- API route input is validated with zod before it is used.
-- AI qualification runs in a route handler so provider credentials never reach the client.
+- `SUPABASE_SERVICE_ROLE_KEY` and AI provider keys are read server-side only; `lib/supabase/admin.ts` and the query layer are marked `server-only`.
+- Reads run as the signed-in user, so RLS is the real boundary — the explicit `workspace_id` filter in every query is a second line of defence.
+- API route input is validated with zod before use.
+- Middleware refreshes the session on every request and redirects unauthenticated visitors away from workspace routes once Supabase is configured.
 
 ## Build phases
 
@@ -110,10 +149,14 @@ Every tenant table carries `workspace_id`. Row level security restricts reads to
 | 1. Design system, shell, dashboard, mock data, responsive | Complete |
 | 2. Lead finder, leads, lead detail, companies, pipeline | Complete |
 | 3. Conversations, AI assistant, appointments, analytics | Complete |
-| 4. Supabase integration, auth, database, RLS | Schema, RLS, clients and seed ready; auth wiring pending |
-| 5. AI provider integration | Interfaces and route handler ready |
+| 4. Supabase integration, auth, database, RLS | Complete — schema, RLS, provisioning, auth, query layer, seed |
+| 5. AI provider integration | Interfaces and route handler ready; no provider call yet |
 | 6. Scraper integration | Not started |
 | 7. Outreach sending | UI complete, sending not wired |
 | 8. Production hardening | Not started |
+
+### What still reads demo data
+
+Aggregate analytics (the activity time series, funnel rates, source performance, AI performance) are computed from the bundled dataset even when Supabase is connected — they need event history the schema does not record yet. Dashboard counters, every list, and every detail page read live records.
 
 The previous static marketing site is preserved under `legacy/`.

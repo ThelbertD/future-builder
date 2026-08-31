@@ -21,9 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DATE_RANGES, INDUSTRIES, KEYWORD_SUGGESTIONS, LOCATIONS, SERVICES, SOURCES } from "@/lib/constants";
-import { SAVED_SEARCHES } from "@/lib/mock";
 import { formatRelative, pluralize } from "@/lib/utils";
-import type { LeadWithRelations } from "@/types";
+import type { LeadWithRelations, SavedSearch } from "@/types";
 
 interface SearchState {
   keywords: string[];
@@ -72,7 +71,13 @@ function matches(lead: LeadWithRelations, state: SearchState): boolean {
   );
 }
 
-export function FinderWorkspace({ leads }: { leads: LeadWithRelations[] }) {
+export function FinderWorkspace({
+  leads,
+  savedSearches,
+}: {
+  leads: LeadWithRelations[];
+  savedSearches: SavedSearch[];
+}) {
   const router = useRouter();
   const [state, setState] = React.useState<SearchState>(INITIAL_STATE);
   const [draftKeyword, setDraftKeyword] = React.useState("");
@@ -369,7 +374,7 @@ export function FinderWorkspace({ leads }: { leads: LeadWithRelations[] }) {
             <Bookmark className="size-3.5 text-muted-foreground" />
           </div>
           <ul className="divide-y divide-border">
-            {SAVED_SEARCHES.map((search) => (
+            {savedSearches.map((search) => (
               <li key={search.id} className="px-4 py-3">
                 <button
                   type="button"

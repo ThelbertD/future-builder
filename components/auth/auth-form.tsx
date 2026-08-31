@@ -2,18 +2,22 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Github, Mail } from "lucide-react";
+import { Github, Mail, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
+import { signIn, signUp, type AuthState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 type Mode = "login" | "signup";
 
-const COPY: Record<Mode, { title: string; description: string; submit: string; alt: string; altHref: string; altLabel: string }> = {
+const COPY: Record<
+  Mode,
+  { title: string; description: string; submit: string; alt: string; altHref: string; altLabel: string }
+> = {
   login: {
     title: "Sign in",
     description: "Welcome back. Pick up where your pipeline left off.",
@@ -32,24 +36,18 @@ const COPY: Record<Mode, { title: string; description: string; submit: string; a
   },
 };
 
-export function AuthForm({ mode }: { mode: Mode }) {
-  const router = useRouter();
-  const copy = COPY[mode];
-  const [loading, setLoading] = React.useState(false);
-  const [email, setEmail] = React.useState("thelbert@futurebuilder.ai");
-  const [password, setPassword] = React.useState("demo-password");
-  const [name, setName] = React.useState("");
+function SubmitButton({ label, pending }: { label: string; pending: boolean }) {
+  return (
+    <Button type="submit" size="lg" className="w-full" loading={pending}>
+      {label}
+    </Button>
+  );
+}
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoading(true);
-    // Supabase Auth replaces this once the backend phase lands.
-    window.setTimeout(() => {
-      setLoading(false);
-      toast.success(mode === "login" ? "Signed in" : "Workspace created");
-      router.push("/dashboard");
-    }, 650);
-  };
+export function AuthForm({ mode }: { mode: Mode }) {
+  const copy = COPY[mode];
+  const action = mode === "login" ? signIn : signUp;
+  const [state, formAction, pending] = React.useActionState<AuthState, FormData>(action, {});
 
   return (
     <div className="space-y-6">
@@ -59,11 +57,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </div>
 
       <div className="grid gap-2">
-        <Button variant="outline" size="lg" onClick={() => toast("Single sign-on arrives with the auth phase.")}>
+        <Button variant="outline" size="lg" onClick={() => toast("Single sign-on arrives with the OAuth phase.")}>
           <Github />
           Continue with GitHub
         </Button>
-        <Button variant="outline" size="lg" onClick={() => toast("Single sign-on arrives with the auth phase.")}>
+        <Button variant="outline" size="lg" onClick={() => toast("Single sign-on arrives with the OAuth phase.")}>
           <Mail />
           Continue with Google
         </Button>
@@ -75,28 +73,32 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <Separator className="flex-1" />
       </div>
 
-      <form onSubmit={submit} className="space-y-3">
+      <form action={formAction} className="space-y-3">
         {mode === "signup" ? (
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Full name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Your name"
-              className="h-10"
-              required
-            />
-          </div>
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName">Full name</Label>
+              <Input id="fullName" name="fullName" placeholder="Your name" className="h-10" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="workspaceName">Workspace name</Label>
+              <Input
+                id="workspaceName"
+                name="workspaceName"
+                placeholder="Your company"
+                className="h-10"
+              />
+            </div>
+          </>
         ) : null}
 
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
             placeholder="you@company.com"
             className="h-10"
             required
@@ -114,17 +116,35 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </div>
           <Input
             id="password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            minLength={8}
             className="h-10"
             required
           />
+          {mode === "signup" ? (
+            <p className="text-[11px] text-muted-foreground">At least 8 characters.</p>
+          ) : null}
         </div>
 
-        <Button type="submit" size="lg" className="w-full" loading={loading}>
-          {copy.submit}
-        </Button>
+        {state?.error ? (
+          <p
+            role="alert"
+            className="flex items-start gap-1.5 rounded-md border border-destructive/25 bg-destructive/10 px-2.5 py-2 text-[12px] text-destructive"
+          >
+            <TriangleAlert className="mt-0.5 size-3 shrink-0" />
+            {state.error}
+          </p>
+        ) : null}
+
+        {state?.notice ? (
+          <p className="rounded-md border border-primary/25 bg-primary/10 px-2.5 py-2 text-[12px] text-primary">
+            {state.notice}
+          </p>
+        ) : null}
+
+        <SubmitButton label={copy.submit} pending={pending} />
       </form>
 
       <p className="text-[13px] text-muted-foreground">
@@ -134,9 +154,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </Link>
       </p>
 
-      <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
-        Demo build — any credentials take you into the workspace with the bundled dataset.
-      </p>
+      {!isSupabaseConfigured ? (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
+          Demo mode — Supabase is not configured, so any details take you straight into the workspace with the
+          bundled dataset.
+        </p>
+      ) : null}
     </div>
   );
 }

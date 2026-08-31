@@ -5,19 +5,22 @@ import * as React from "react";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { ShellDataProvider, type ShellData } from "@/components/layout/shell-data";
 import { ShellProvider, useShell } from "@/components/layout/shell-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ data, children }: { data: ShellData; children: React.ReactNode }) {
   return (
-    <ShellProvider>
-      <TooltipProvider delayDuration={250}>
-        <ShellLayout>{children}</ShellLayout>
-      </TooltipProvider>
-    </ShellProvider>
+    <ShellDataProvider value={data}>
+      <ShellProvider>
+        <TooltipProvider delayDuration={250}>
+          <ShellLayout>{children}</ShellLayout>
+        </TooltipProvider>
+      </ShellProvider>
+    </ShellDataProvider>
   );
 }
 

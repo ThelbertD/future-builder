@@ -25,7 +25,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { COMPANIES, CONVERSATIONS, LEADS_WITH_RELATIONS } from "@/lib/mock";
+import { useShellData } from "@/components/layout/shell-data";
 
 const ACTIONS = [
   { label: "Run a lead search", href: "/finder", icon: Radar, shortcut: "L" },
@@ -40,6 +40,7 @@ const ACTIONS = [
 export function CommandMenu() {
   const router = useRouter();
   const { commandOpen, setCommandOpen, setAssistantOpen } = useShell();
+  const { search } = useShellData();
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -90,44 +91,30 @@ export function CommandMenu() {
         <CommandSeparator />
 
         <CommandGroup heading="Leads">
-          {LEADS_WITH_RELATIONS.slice(0, 8).map((lead) => (
-            <CommandItem
-              key={lead.id}
-              value={`${lead.company.name} ${lead.jobPost?.title ?? ""}`}
-              onSelect={() => go(`/leads/${lead.id}`)}
-            >
+          {search.leads.map((item) => (
+            <CommandItem key={item.id} value={`${item.label} ${item.detail}`} onSelect={() => go(item.href)}>
               <UserPlus />
-              <span className="truncate">{lead.company.name}</span>
-              <span className="ml-auto truncate pl-3 text-[11px] text-muted-foreground">
-                {lead.jobPost?.title}
-              </span>
+              <span className="truncate">{item.label}</span>
+              <span className="ml-auto truncate pl-3 text-[11px] text-muted-foreground">{item.detail}</span>
             </CommandItem>
           ))}
         </CommandGroup>
 
         <CommandGroup heading="Companies">
-          {COMPANIES.slice(0, 6).map((company) => (
-            <CommandItem
-              key={company.id}
-              value={`${company.name} ${company.industry}`}
-              onSelect={() => go(`/companies/${company.id}`)}
-            >
+          {search.companies.map((item) => (
+            <CommandItem key={item.id} value={`${item.label} ${item.detail}`} onSelect={() => go(item.href)}>
               <Building2 />
-              <span className="truncate">{company.name}</span>
-              <span className="ml-auto truncate pl-3 text-[11px] text-muted-foreground">{company.industry}</span>
+              <span className="truncate">{item.label}</span>
+              <span className="ml-auto truncate pl-3 text-[11px] text-muted-foreground">{item.detail}</span>
             </CommandItem>
           ))}
         </CommandGroup>
 
         <CommandGroup heading="Conversations">
-          {CONVERSATIONS.slice(0, 5).map((conversation) => (
-            <CommandItem
-              key={conversation.id}
-              value={conversation.subject}
-              onSelect={() => go(`/conversations?c=${conversation.id}`)}
-            >
+          {search.conversations.map((item) => (
+            <CommandItem key={item.id} value={item.label} onSelect={() => go(item.href)}>
               <MessagesSquare />
-              <span className="truncate">{conversation.subject}</span>
+              <span className="truncate">{item.label}</span>
             </CommandItem>
           ))}
         </CommandGroup>

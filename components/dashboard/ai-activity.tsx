@@ -11,9 +11,8 @@ import {
 } from "lucide-react";
 
 import { AIBadge } from "@/components/ai/ai-badge";
-import { ACTIVITIES } from "@/lib/mock";
 import { cn, formatRelative } from "@/lib/utils";
-import type { ActivityType } from "@/types";
+import type { Activity, ActivityType } from "@/types";
 
 const ICONS: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
   lead_discovered: Radar,
@@ -28,11 +27,21 @@ const ICONS: Record<ActivityType, React.ComponentType<{ className?: string }>> =
   handoff_requested: TriangleAlert,
 };
 
-export function AIActivityFeed({ limit = 8 }: { limit?: number }) {
+export function AIActivityFeed({ activities, limit = 8 }: { activities: Activity[]; limit?: number }) {
+  const visible = activities.slice(0, limit);
+
+  if (visible.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+        Nothing has happened yet. Activity appears here as the assistant works.
+      </p>
+    );
+  }
+
   return (
     <ul className="divide-y divide-border">
-      {ACTIVITIES.slice(0, limit).map((activity) => {
-        const Icon = ICONS[activity.type];
+      {visible.map((activity) => {
+        const Icon = ICONS[activity.type] ?? Sparkles;
         const href = activity.leadId ? `/leads/${activity.leadId}` : "/leads";
 
         return (

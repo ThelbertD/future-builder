@@ -3,13 +3,21 @@ import { ArrowRight, MessageSquarePlus, MoveRight } from "lucide-react";
 
 import { IntentBadge, ScoreMeter, StatusBadge } from "@/components/common/indicators";
 import { Button } from "@/components/ui/button";
-import { HOT_LEADS } from "@/lib/mock";
 import { formatCurrency, formatRelative } from "@/lib/utils";
+import type { LeadWithRelations } from "@/types";
 
-export function HotLeads() {
+export function HotLeads({ leads }: { leads: LeadWithRelations[] }) {
+  if (leads.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+        No open opportunities yet. Run a search to fill this list.
+      </p>
+    );
+  }
+
   return (
     <ul className="divide-y divide-border">
-      {HOT_LEADS.map((lead) => (
+      {leads.map((lead) => (
         <li key={lead.id} className="group flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

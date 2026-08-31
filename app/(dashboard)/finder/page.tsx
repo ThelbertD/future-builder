@@ -5,11 +5,13 @@ import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { FinderWorkspace } from "@/components/leads/finder-workspace";
 import { Button } from "@/components/ui/button";
-import { LEADS_WITH_RELATIONS } from "@/lib/mock";
+import { fetchLeads, fetchSavedSearches } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = { title: "Lead Finder" };
 
-export default function FinderPage() {
+export default async function FinderPage() {
+  const [leads, savedSearches] = await Promise.all([fetchLeads(), fetchSavedSearches()]);
+
   return (
     <PageContainer>
       <PageHeader
@@ -22,7 +24,7 @@ export default function FinderPage() {
           </Button>
         }
       />
-      <FinderWorkspace leads={LEADS_WITH_RELATIONS} />
+      <FinderWorkspace leads={leads} savedSearches={savedSearches} />
     </PageContainer>
   );
 }

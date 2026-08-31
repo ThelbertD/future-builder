@@ -11,24 +11,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PIPELINE_STAGES } from "@/lib/mock";
+import type { PipelineStage } from "@/types";
 
-export function LeadStageControl({ leadId, stageId }: { leadId: string; stageId: string }) {
+export function LeadStageControl({
+  leadId,
+  stageId,
+  stages,
+}: {
+  leadId: string;
+  stageId: string;
+  stages: PipelineStage[];
+}) {
   const [value, setValue] = React.useState(stageId);
 
   const change = (next: string) => {
     setValue(next);
-    const stage = PIPELINE_STAGES.find((item) => item.id === next);
+    const stage = stages.find((item) => item.id === next);
     toast.success("Stage updated", { description: `Lead moved to ${stage?.name ?? "a new stage"}.` });
   };
 
   return (
     <Select value={value} onValueChange={change} name={`stage-${leadId}`}>
       <SelectTrigger className="w-full">
-        <SelectValue />
+        <SelectValue placeholder="Select a stage" />
       </SelectTrigger>
       <SelectContent>
-        {PIPELINE_STAGES.map((stage) => (
+        {stages.map((stage) => (
           <SelectItem key={stage.id} value={stage.id}>
             <span className="flex items-center gap-2">
               <StageDot colorToken={stage.colorToken} />

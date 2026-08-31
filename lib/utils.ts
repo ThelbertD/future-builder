@@ -30,8 +30,14 @@ export function hoursFromNow(hours: number, from: Date = MOCK_NOW): string {
   return new Date(from.getTime() + hours * 3_600_000).toISOString();
 }
 
-/** Compact "2h ago" / "in 3d" style label, anchored to the demo clock. */
-export function formatRelative(iso: string, from: Date = MOCK_NOW): string {
+/**
+ * Compact "2h ago" / "in 3d" label.
+ *
+ * Defaults to the real clock so database records read correctly; the bundled
+ * demo dataset is generated around MOCK_NOW, so its labels stay close to these
+ * values while drifting slowly over time.
+ */
+export function formatRelative(iso: string, from: Date = new Date()): string {
   const diff = new Date(iso).getTime() - from.getTime();
   const abs = Math.abs(diff);
   const minute = 60_000;
@@ -138,4 +144,9 @@ export function createLocalId(prefix: string): string {
 /** Current instant as an ISO string. Kept out of component bodies. */
 export function nowIso(): string {
   return new Date().toISOString();
+}
+
+/** Current instant in milliseconds. Kept out of component bodies. */
+export function nowMs(): number {
+  return Date.now();
 }

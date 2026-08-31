@@ -11,39 +11,40 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsListUnderline, TabsTriggerUnderline } from "@/components/ui/tabs";
 import {
-  COMPANIES,
-  CONVERSATIONS,
-  getCompanyById,
-  getContactsByCompany,
-  getJobPostsByCompany,
-  getLeadsByCompany,
-} from "@/lib/mock";
+  fetchActivities,
+  fetchCompany,
+  fetchContactsByCompany,
+  fetchConversationsByCompany,
+  fetchJobPostsByCompany,
+  fetchLeadsByCompany,
+} from "@/lib/supabase/queries";
 import { formatDate, formatRelative } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  return COMPANIES.map((company) => ({ id: company.id }));
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const company = getCompanyById(id);
+  const company = await fetchCompany(id);
   return { title: company?.name ?? "Company" };
 }
 
 export default async function CompanyDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const company = getCompanyById(id);
+  const company = await fetchCompany(id);
 
   if (!company) notFound();
 
-  const contacts = getContactsByCompany(company.id);
-  const jobs = getJobPostsByCompany(company.id);
-  const leads = getLeadsByCompany(company.id);
-  const conversations = CONVERSATIONS.filter((conversation) => conversation.companyId === company.id);
+  const [contacts, jobs, leads, conversations, allActivities] = await Promise.all([
+    fetchContactsByCompany(company.id),
+    fetchJobPostsByCompany(company.id),
+    fetchLeadsByCompany(company.id),
+    fetchConversationsByCompany(company.id),
+    fetchActivities(50),
+  ]);
+
+  const activities = allActivities.filter((activity) => activity.companyId === company.id);
 
   return (
     <PageContainer>
@@ -252,7 +253,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
 
         <TabsContent value="activity">
           <Card className="p-4">
-            <ActivityTimeline leadId={leads[0]?.id ?? ""} />
+            <ActivityTimeline activities={activities} />
           </Card>
         </TabsContent>
       </Tabs>

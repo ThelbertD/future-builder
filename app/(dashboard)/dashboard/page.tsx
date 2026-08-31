@@ -12,8 +12,16 @@ import { StatGrid } from "@/components/dashboard/stat-card";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CURRENT_USER, DASHBOARD_METRICS, UPCOMING_APPOINTMENTS } from "@/lib/mock";
-import { formatDate, formatTime } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/supabase/auth";
+import {
+  fetchActivities,
+  fetchAppointments,
+  fetchDashboardMetrics,
+  fetchHotLeads,
+  fetchLeads,
+  fetchPipelineStages,
+} from "@/lib/supabase/queries";
+import { formatDate, formatTime, nowMs } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -25,9 +33,25 @@ function greeting(): string {
   return "Good evening";
 }
 
-export default function DashboardPage() {
-  const firstName = CURRENT_USER.fullName.split(" ")[0];
-  const nextAppointments = UPCOMING_APPOINTMENTS.slice(0, 4);
+export default async function DashboardPage() {
+  const [user, metrics, stages, leads, hotLeads, activities, appointments] = await Promise.all([
+    getCurrentUser(),
+    fetchDashboardMetrics(),
+    fetchPipelineStages(),
+    fetchLeads(),
+    fetchHotLeads(5),
+    fetchActivities(8),
+    fetchAppointments(),
+  ]);
+
+  const firstName = (user?.fullName ?? "there").split(" ")[0];
+  const now = nowMs();
+  const nextAppointments = appointments
+    .filter(
+      (appointment) =>
+        appointment.status !== "cancelled" && new Date(appointment.startsAt).getTime() >= now,
+    )
+    .slice(0, 4);
 
   return (
     <PageContainer>
@@ -56,7 +80,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StatGrid metrics={DASHBOARD_METRICS} />
+      <StatGrid metrics={metrics} />
 
       <Card className="overflow-hidden p-0">
         <ActivityChart />
@@ -75,7 +99,7 @@ export default function DashboardPage() {
             </Link>
           </Button>
         </div>
-        <PipelineOverview />
+        <PipelineOverview stages={stages} leads={leads} />
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -89,7 +113,7 @@ export default function DashboardPage() {
               </Link>
             </Button>
           </div>
-          <HotLeads />
+          <HotLeads leads={hotLeads} />
         </Card>
 
         <div className="space-y-4">
@@ -105,7 +129,7 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </div>
-            <AIActivityFeed limit={6} />
+            <AIActivityFeed activities={activities} limit={6} />
           </Card>
 
           <Card className="overflow-hidden p-0">
@@ -117,30 +141,36 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </div>
-            <ul className="divide-y divide-border">
-              {nextAppointments.map((appointment) => (
-                <li key={appointment.id}>
-                  <Link
-                    href="/appointments"
-                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/40"
-                  >
-                    <div className="w-14 shrink-0 text-center">
-                      <p className="text-[11px] text-muted-foreground uppercase">
-                        {formatDate(appointment.startsAt, { month: "short", day: "numeric", year: undefined })}
-                      </p>
-                      <p className="text-[13px] font-medium tabular-nums">{formatTime(appointment.startsAt)}</p>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px]">{appointment.title}</p>
-                      <p className="truncate text-[12px] text-muted-foreground">
-                        {appointment.meetingType} · {appointment.location}
-                      </p>
-                    </div>
-                    {appointment.bookedByAI ? <AIBadge size="sm" label="Booked" /> : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {nextAppointments.length === 0 ? (
+              <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+                Nothing booked yet. Calls appear here as soon as one is scheduled.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {nextAppointments.map((appointment) => (
+                  <li key={appointment.id}>
+                    <Link
+                      href="/appointments"
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/40"
+                    >
+                      <div className="w-14 shrink-0 text-center">
+                        <p className="text-[11px] text-muted-foreground uppercase">
+                          {formatDate(appointment.startsAt, { month: "short", day: "numeric", year: undefined })}
+                        </p>
+                        <p className="text-[13px] font-medium tabular-nums">{formatTime(appointment.startsAt)}</p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px]">{appointment.title}</p>
+                        <p className="truncate text-[12px] text-muted-foreground">
+                          {appointment.meetingType} · {appointment.location}
+                        </p>
+                      </div>
+                      {appointment.bookedByAI ? <AIBadge size="sm" label="Booked" /> : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
       </div>
