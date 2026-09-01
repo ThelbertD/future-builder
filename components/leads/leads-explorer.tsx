@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Download, KanbanSquare, Radar, Sparkles, X } from "lucide-react";
+import { AtSign, Download, KanbanSquare, Radar, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { generateOutreachAction } from "@/app/(dashboard)/leads/actions";
+import { discoverContactsAction } from "@/app/(dashboard)/leads/enrich-actions";
 import { EmptyState } from "@/components/common/empty-state";
 import { OutreachDraftDialog, type OutreachDraft } from "@/components/leads/outreach-draft-dialog";
 import {
@@ -46,6 +47,7 @@ export function LeadsExplorer({
   const [selected, setSelected] = React.useState<string[]>([]);
   const [draft, setDraft] = React.useState<OutreachDraft | null>(null);
   const [drafting, setDrafting] = React.useState(false);
+  const [enriching, setEnriching] = React.useState(false);
 
   const visible = React.useMemo(() => sortLeads(applyLeadFilters(leads, filters), sort), [leads, filters, sort]);
 
@@ -55,6 +57,35 @@ export function LeadsExplorer({
     () => selected.filter((id) => visible.some((lead) => lead.id === id)),
     [selected, visible],
   );
+
+  /** Reads each company's own site for the address they publish. */
+  const findContacts = async () => {
+    if (enriching || visibleSelected.length === 0) return;
+
+    setEnriching(true);
+    const result = await discoverContactsAction({ leadIds: visibleSelected.slice(0, 15) });
+    setEnriching(false);
+
+    if (!result.ok) {
+      toast.error("Could not look up contacts", { description: result.error });
+      return;
+    }
+
+    if (result.found === 0) {
+      toast("No public addresses found", {
+        description:
+          result.searched === 0
+            ? "Those leads already have a contact."
+            : `Checked ${result.searched} companies. Many publish a form instead of an address.`,
+      });
+      return;
+    }
+
+    toast.success(`${pluralize(result.found, "contact")} found`, {
+      description: `From ${result.searched} companies checked. They are attached to their leads.`,
+    });
+    router.refresh();
+  };
 
   /** Drafts a message for every selected lead, sequentially so writes stay ordered. */
   const draftForSelected = async () => {
@@ -132,6 +163,10 @@ export function LeadsExplorer({
             >
               <KanbanSquare />
               Add to pipeline
+            </Button>
+            <Button size="sm" variant="outline" loading={enriching} onClick={() => void findContacts()}>
+              <AtSign />
+              Find contacts
             </Button>
             <Button size="sm" variant="outline" loading={drafting} onClick={() => void draftForSelected()}>
               <Sparkles />

@@ -4,6 +4,7 @@ import { hackerNews } from "@/lib/scraper/sources/hacker-news";
 import { jobicy } from "@/lib/scraper/sources/jobicy";
 import { remoteok } from "@/lib/scraper/sources/remoteok";
 import { remotive } from "@/lib/scraper/sources/remotive";
+import { theMuse } from "@/lib/scraper/sources/the-muse";
 import type { ScrapedJob, SearchQuery, SourceAdapter, SourceOutcome } from "@/lib/scraper/types";
 
 /**
@@ -15,7 +16,7 @@ import type { ScrapedJob, SearchQuery, SourceAdapter, SourceOutcome } from "@/li
  * against them would put the workspace owner at risk. Adding a licensed
  * provider later is a single new file implementing SourceAdapter.
  */
-export const SOURCES: SourceAdapter[] = [remotive, remoteok, arbeitnow, jobicy, hackerNews];
+export const SOURCES: SourceAdapter[] = [remotive, remoteok, arbeitnow, jobicy, theMuse, hackerNews];
 
 const SOURCE_TIMEOUT_MS = 9_000;
 
