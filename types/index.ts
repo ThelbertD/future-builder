@@ -385,6 +385,8 @@ export interface Integration {
   icon: string;
   docsUrl?: string;
   connectedAt?: ISODate;
+  /** Why it is not connected, or what it needs. Shown on the card. */
+  note?: string;
 }
 
 /* ------------------------------------------------------------------ */

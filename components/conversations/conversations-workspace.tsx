@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { sendDraftAction } from "@/app/(dashboard)/conversations/actions";
 import { AIBadge, AIThinking } from "@/components/ai/ai-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { IntentBadge, ScoreMeter, StatusBadge } from "@/components/common/indicators";
@@ -33,6 +35,7 @@ interface WorkspaceProps {
 }
 
 export function ConversationsWorkspace({ conversations: initial, leads, initialConversationId }: WorkspaceProps) {
+  const router = useRouter();
   const [conversations, setConversations] = React.useState(initial);
   const [activeId, setActiveId] = React.useState<string | null>(
     initialConversationId ?? initial[0]?.id ?? null,
@@ -42,6 +45,8 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
   const [draft, setDraft] = React.useState("");
   const [drafting, setDrafting] = React.useState(false);
   const [mobileDetail, setMobileDetail] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+  const [lastDraftId, setLastDraftId] = React.useState<string | null>(null);
 
   const leadFor = React.useCallback(
     (conversation: Conversation) => leads.find((lead) => lead.id === conversation.leadId),
@@ -67,6 +72,32 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
 
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
   const activeLead = active ? leadFor(active) : undefined;
+
+  // A thread carries at most one draft. Load it into the composer so the send
+  // button acts on what is actually on screen, edits included.
+  const draftMessage = active?.messages.find((message) => message.isDraft) ?? null;
+  if (draftMessage && draftMessage.id !== lastDraftId) {
+    setLastDraftId(draftMessage.id);
+    setDraft(draftMessage.body);
+  }
+
+  const sendDraft = async () => {
+    if (!draftMessage || !draft.trim()) return;
+
+    setSending(true);
+    const result = await sendDraftAction({ messageId: draftMessage.id, body: draft });
+    setSending(false);
+
+    if (!result.ok) {
+      toast.error("Not sent", { description: result.error });
+      return;
+    }
+
+    toast.success("Outreach sent", { description: `Delivered to ${result.sentTo}.` });
+    setDraft("");
+    setLastDraftId(null);
+    router.refresh();
+  };
 
   const select = (id: string) => {
     setActiveId(id);
@@ -213,10 +244,23 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
                     <Sparkles />
                     Draft with AI
                   </Button>
-                  <Button size="sm" className="ml-auto" onClick={send} disabled={!draft.trim()}>
-                    <Send />
-                    Send
-                  </Button>
+                  {draftMessage ? (
+                    <Button
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => void sendDraft()}
+                      loading={sending}
+                      disabled={!draft.trim()}
+                    >
+                      <Send />
+                      Send draft
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="ml-auto" onClick={send} disabled={!draft.trim()}>
+                      <Send />
+                      Send
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

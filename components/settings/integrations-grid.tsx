@@ -16,8 +16,14 @@ import {
   Webhook,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -48,22 +54,11 @@ const CATEGORIES = ["All", "Data", "AI", "Calendar", "Email", "Developer"] as co
 
 export function IntegrationsGrid({ integrations }: { integrations: Integration[] }) {
   const [category, setCategory] = React.useState<string>("All");
-  const [state, setState] = React.useState(integrations);
+  const [setup, setSetup] = React.useState<Integration | null>(null);
 
-  const visible = state.filter((integration) => category === "All" || integration.category === category);
-
-  const connect = (integration: Integration) => {
-    setState((current) =>
-      current.map((item) =>
-        item.id === integration.id
-          ? { ...item, status: "connected", connectedAt: new Date().toISOString() }
-          : item,
-      ),
-    );
-    toast.success(`${integration.name} connected`, {
-      description: "Credentials are stored server-side and never sent to the browser.",
-    });
-  };
+  const visible = integrations.filter(
+    (integration) => category === "All" || integration.category === category,
+  );
 
   return (
     <div className="space-y-4">
@@ -105,6 +100,9 @@ export function IntegrationsGrid({ integrations }: { integrations: Integration[]
                     </Badge>
                   </div>
                   <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{integration.description}</p>
+                  {integration.note ? (
+                    <p className="mt-1.5 font-mono text-[11px] text-muted-foreground/80">{integration.note}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -112,9 +110,9 @@ export function IntegrationsGrid({ integrations }: { integrations: Integration[]
                 {integration.status === "connected" ? (
                   <>
                     <span className="text-[11px] text-muted-foreground">
-                      {integration.connectedAt ? `Connected ${formatRelative(integration.connectedAt)}` : "Connected"}
+                      {integration.connectedAt ? `Connected ${formatRelative(integration.connectedAt)}` : "Active"}
                     </span>
-                    <Button variant="outline" size="sm" className="ml-auto">
+                    <Button variant="outline" size="sm" className="ml-auto" onClick={() => setSetup(integration)}>
                       <Settings2 />
                       Settings
                     </Button>
@@ -124,13 +122,8 @@ export function IntegrationsGrid({ integrations }: { integrations: Integration[]
                     Coming soon
                   </Button>
                 ) : (
-                  <Button
-                    size="sm"
-                    variant={integration.status === "error" ? "destructive" : "default"}
-                    className="ml-auto"
-                    onClick={() => connect(integration)}
-                  >
-                    {integration.status === "error" ? "Reconnect" : "Connect"}
+                  <Button size="sm" className="ml-auto" onClick={() => setSetup(integration)}>
+                    How to connect
                   </Button>
                 )}
               </div>
@@ -138,6 +131,76 @@ export function IntegrationsGrid({ integrations }: { integrations: Integration[]
           );
         })}
       </div>
+
+      <SetupDialog integration={setup} onOpenChange={(open) => !open && setSetup(null)} />
     </div>
+  );
+}
+
+/** Environment variables per integration, so the panel never invents a flow. */
+const SETUP_STEPS: Record<string, { vars: string[]; help: string }> = {
+  supabase: {
+    vars: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+    help: "Project dashboard → Settings → API Keys.",
+  },
+  openai: { vars: ["OPENAI_API_KEY"], help: "platform.openai.com → API keys." },
+  anthropic: { vars: ["ANTHROPIC_API_KEY"], help: "console.anthropic.com → API keys." },
+  "email-provider": {
+    vars: ["RESEND_API_KEY", "EMAIL_FROM"],
+    help: "resend.com → API keys. Verify your sending domain first, then set EMAIL_FROM to an address on it, for example \"Thelbert <hello@futurebuilder.ai>\".",
+  },
+};
+
+function SetupDialog({
+  integration,
+  onOpenChange,
+}: {
+  integration: Integration | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const steps = integration ? SETUP_STEPS[integration.id] : undefined;
+
+  return (
+    <Dialog open={integration !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{integration?.name}</DialogTitle>
+          <DialogDescription>
+            Credentials are read from server-side environment variables. They are never stored in the database,
+            where any workspace member could read them.
+          </DialogDescription>
+        </DialogHeader>
+
+        {steps ? (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                Environment variables
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {steps.vars.map((name) => (
+                  <li key={name} className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[12px]">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-[12px] leading-relaxed text-muted-foreground">{steps.help}</p>
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
+              Add them to <code className="font-mono text-[11px]">.env.local</code> for development, and to your
+              hosting environment for production. A new build is required before they take effect.
+            </p>
+          </div>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">This integration is not available yet.</p>
+        )}
+
+        <DialogFooter>
+          <Button size="sm" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

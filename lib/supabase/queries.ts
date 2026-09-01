@@ -33,8 +33,9 @@ import {
   getLeadById,
   getLeadsByCompany,
 } from "@/lib/mock";
+import { emailProviderStatus } from "@/lib/email/provider";
 import { getActiveWorkspaceId } from "@/lib/supabase/auth";
-import { useMockData } from "@/lib/supabase/env";
+import { isSupabaseConfigured, useMockData } from "@/lib/supabase/env";
 import {
   firstAnalysis,
   mergeIntegration,
@@ -441,12 +442,51 @@ export async function fetchSavedSearches(): Promise<SavedSearch[]> {
   return (data ?? []).map(toSavedSearch);
 }
 
+/**
+ * Real connection status, resolved from what is actually configured on the
+ * server rather than from stored flags. A card that claims a connection the
+ * app cannot make is worse than one that admits it is not set up.
+ */
+function resolveStatus(integration: Integration): Integration {
+  switch (integration.id) {
+    case "supabase":
+      return isSupabaseConfigured
+        ? { ...integration, status: "connected" }
+        : { ...integration, note: "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY." };
+
+    case "openai":
+      return process.env.OPENAI_API_KEY
+        ? { ...integration, status: "connected" }
+        : { ...integration, note: "Set OPENAI_API_KEY on the server." };
+
+    case "anthropic":
+      return process.env.ANTHROPIC_API_KEY
+        ? { ...integration, status: "connected" }
+        : { ...integration, note: "Set ANTHROPIC_API_KEY on the server." };
+
+    case "email-provider": {
+      const email = emailProviderStatus();
+      if (email.configured) {
+        return { ...integration, status: "connected", note: `Sending as ${email.from}` };
+      }
+      return { ...integration, note: `Set ${email.missing.join(" and ")} on the server.` };
+    }
+
+    default:
+      return integration;
+  }
+}
+
 export async function fetchIntegrations(): Promise<Integration[]> {
-  if (useMockData) return INTEGRATIONS;
+  const resolved = INTEGRATIONS.map(resolveStatus);
+
+  if (useMockData) return resolved;
 
   const { supabase, workspaceId } = await workspaceScope();
-  if (!workspaceId) return INTEGRATIONS;
+  if (!workspaceId) return resolved;
 
+  // Stored rows only ever carry connection time and per-workspace overrides;
+  // credentials never live in the database.
   const { data } = await supabase
     .from("integrations")
     .select("*")
@@ -454,7 +494,12 @@ export async function fetchIntegrations(): Promise<Integration[]> {
     .returns<IntegrationRow[]>();
 
   const byProvider = new Map((data ?? []).map((row) => [row.provider, row]));
-  return INTEGRATIONS.map((integration) => mergeIntegration(integration, byProvider.get(integration.id)));
+
+  return resolved.map((integration) => {
+    const row = byProvider.get(integration.id);
+    if (!row || integration.status === "connected") return integration;
+    return mergeIntegration(integration, row);
+  });
 }
 
 /* ---------------------------------------------------------------- metrics */

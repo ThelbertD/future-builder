@@ -1,27 +1,32 @@
 import type { Integration, SavedSearch } from "@/types";
-import { daysAgo, hoursAgo } from "@/lib/utils";
+import { hoursAgo } from "@/lib/utils";
 import { WORKSPACE_ID } from "./workspace";
 
+/**
+ * Integration catalogue.
+ *
+ * This is metadata only. Real status is resolved server-side in
+ * lib/supabase/queries.ts from what is actually configured, so a card never
+ * claims a connection that does not exist.
+ */
 export const INTEGRATIONS: Integration[] = [
   {
     id: "supabase",
     name: "Supabase",
     category: "Data",
     description: "Primary database, authentication, and row level security for every workspace.",
-    status: "connected",
+    status: "available",
     icon: "Database",
     docsUrl: "https://supabase.com/docs",
-    connectedAt: daysAgo(112),
   },
   {
     id: "openai",
     name: "OpenAI",
     category: "AI",
     description: "Lead qualification, outreach drafting, and conversation summarisation.",
-    status: "connected",
+    status: "available",
     icon: "Sparkles",
     docsUrl: "https://platform.openai.com/docs",
-    connectedAt: daysAgo(96),
   },
   {
     id: "anthropic",
@@ -33,37 +38,36 @@ export const INTEGRATIONS: Integration[] = [
     docsUrl: "https://docs.anthropic.com",
   },
   {
+    id: "email-provider",
+    name: "Email (Resend)",
+    category: "Email",
+    description: "Sends outreach from your own domain. Drafts stay unsent until this is connected.",
+    status: "available",
+    icon: "Mail",
+    docsUrl: "https://resend.com/docs",
+  },
+  {
     id: "google-calendar",
     name: "Google Calendar",
     category: "Calendar",
     description: "Two-way sync for availability, booked calls, and reschedules.",
-    status: "connected",
+    status: "coming_soon",
     icon: "CalendarDays",
-    connectedAt: daysAgo(64),
   },
   {
     id: "google-meet",
     name: "Google Meet",
     category: "Calendar",
     description: "Generates a meeting link automatically on every booked appointment.",
-    status: "connected",
+    status: "coming_soon",
     icon: "Video",
-    connectedAt: daysAgo(64),
-  },
-  {
-    id: "email-provider",
-    name: "Email Provider",
-    category: "Email",
-    description: "Send and receive outreach through your own domain with reply tracking.",
-    status: "error",
-    icon: "Mail",
   },
   {
     id: "webhooks",
     name: "Webhooks",
     category: "Developer",
     description: "Push lead, stage, and appointment events into any external system.",
-    status: "available",
+    status: "coming_soon",
     icon: "Webhook",
   },
   {
