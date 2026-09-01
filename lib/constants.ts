@@ -173,3 +173,27 @@ export const DASHBOARD_STAGE_NAMES = [
   "Appointment Booked",
   "Won",
 ];
+
+/** The stage set created for every new workspace and every new pipeline. */
+export interface DefaultStageSeed {
+  name: string;
+  colorToken: string;
+  probability: number;
+  isWon?: boolean;
+  isLost?: boolean;
+}
+
+export const DEFAULT_PIPELINE_STAGES: DefaultStageSeed[] = [
+  { name: "New", colorToken: "chart-5", probability: 5 },
+  { name: "AI Qualified", colorToken: "chart-1", probability: 15 },
+  { name: "Ready to Contact", colorToken: "chart-1", probability: 20 },
+  { name: "Contacted", colorToken: "chart-1", probability: 30 },
+  { name: "Replied", colorToken: "chart-3", probability: 40 },
+  { name: "Interested", colorToken: "chart-3", probability: 55 },
+  { name: "Appointment Booked", colorToken: "chart-2", probability: 65 },
+  { name: "Call Completed", colorToken: "chart-2", probability: 72 },
+  { name: "Proposal Sent", colorToken: "chart-4", probability: 80 },
+  { name: "Negotiation", colorToken: "chart-4", probability: 88 },
+  { name: "Won", colorToken: "chart-2", probability: 100, isWon: true },
+  { name: "Lost", colorToken: "chart-5", probability: 0, isLost: true },
+];

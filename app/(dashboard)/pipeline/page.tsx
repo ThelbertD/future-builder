@@ -1,22 +1,32 @@
 import type { Metadata } from "next";
-import { KanbanSquare, Settings2 } from "lucide-react";
 
-import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
-import { Button } from "@/components/ui/button";
+import { PipelineSwitcher } from "@/components/pipeline/pipeline-switcher";
 import { getActiveWorkspace } from "@/lib/supabase/auth";
-import { fetchLeads, fetchPipelineStages } from "@/lib/supabase/queries";
+import { fetchLeads, fetchPipelines, fetchPipelineStages } from "@/lib/supabase/queries";
 import { formatCompact } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Pipeline" };
 
-export default async function PipelinePage() {
-  const [stages, leads, workspace] = await Promise.all([
-    fetchPipelineStages(),
+interface PageProps {
+  searchParams: Promise<{ p?: string }>;
+}
+
+export default async function PipelinePage({ searchParams }: PageProps) {
+  const [{ p }, pipelines, allLeads, workspace] = await Promise.all([
+    searchParams,
+    fetchPipelines(),
     fetchLeads(),
     getActiveWorkspace(),
   ]);
+
+  const activePipeline = pipelines.find((pipeline) => pipeline.id === p) ?? pipelines[0];
+  const stages = await fetchPipelineStages(activePipeline?.id);
+
+  // Leads live on a stage, so a board only shows the leads in its own stages.
+  const stageIds = new Set(stages.map((stage) => stage.id));
+  const leads = allLeads.filter((lead) => stageIds.has(lead.stageId));
 
   const openLeads = leads.filter((lead) => !["won", "lost"].includes(lead.status));
   const openValue = openLeads.reduce((total, lead) => total + lead.estimatedValue, 0);
@@ -32,30 +42,20 @@ export default async function PipelinePage() {
           title="Pipeline"
           description={`${openLeads.length} open opportunities · $${formatCompact(openValue)} open value · $${formatCompact(weighted)} weighted`}
           actions={
-            <Button variant="outline" size="sm">
-              <Settings2 />
-              Customise stages
-            </Button>
+            pipelines.length > 0 && activePipeline ? (
+              <PipelineSwitcher pipelines={pipelines} activePipelineId={activePipeline.id} />
+            ) : null
           }
         />
       </div>
       <div className="min-h-0 flex-1">
-        {stages.length === 0 ? (
-          <div className="px-4 lg:px-6">
-            <EmptyState
-              icon={KanbanSquare}
-              title="No pipeline stages"
-              description="This workspace has no stages yet. They are created automatically when a workspace is provisioned."
-            />
-          </div>
-        ) : (
-          <PipelineBoard
-            stages={stages}
-            leads={leads}
-            workspaceId={workspace?.id ?? ""}
-            pipelineId={stages[0]?.pipelineId ?? ""}
-          />
-        )}
+        <PipelineBoard
+          key={activePipeline?.id ?? "none"}
+          stages={stages}
+          leads={leads}
+          workspaceId={workspace?.id ?? ""}
+          pipelineId={activePipeline?.id ?? ""}
+        />
       </div>
     </div>
   );

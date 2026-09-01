@@ -24,6 +24,7 @@ import {
   JOB_POSTS,
   LEADS_WITH_RELATIONS,
   NOTIFICATIONS,
+  DEFAULT_PIPELINE,
   PIPELINE_STAGES,
   SAVED_SEARCHES,
   getCompanyById,
@@ -76,6 +77,7 @@ import type {
   LeadWithRelations,
   MetricSummary,
   PipelineStage,
+  PipelineSummary,
   SavedSearch,
 } from "@/types";
 
@@ -273,18 +275,36 @@ export async function fetchJobPosts(): Promise<JobPost[]> {
 
 /* --------------------------------------------------------------- pipeline */
 
-export async function fetchPipelineStages(): Promise<PipelineStage[]> {
-  if (useMockData) return PIPELINE_STAGES;
+export async function fetchPipelines(): Promise<PipelineSummary[]> {
+  if (useMockData) {
+    return [{ id: DEFAULT_PIPELINE.id, name: DEFAULT_PIPELINE.name, isDefault: DEFAULT_PIPELINE.isDefault }];
+  }
 
   const { supabase, workspaceId } = await workspaceScope();
   if (!workspaceId) return [];
 
   const { data } = await supabase
-    .from("pipeline_stages")
-    .select("*")
+    .from("pipelines")
+    .select("id, name, is_default")
     .eq("workspace_id", workspaceId)
-    .order("position", { ascending: true })
-    .returns<PipelineStageRow[]>();
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true })
+    .returns<Array<{ id: string; name: string; is_default: boolean }>>();
+
+  return (data ?? []).map((row) => ({ id: row.id, name: row.name, isDefault: row.is_default }));
+}
+
+/** Stages for one pipeline, or every stage in the workspace when omitted. */
+export async function fetchPipelineStages(pipelineId?: string): Promise<PipelineStage[]> {
+  if (useMockData) return PIPELINE_STAGES;
+
+  const { supabase, workspaceId } = await workspaceScope();
+  if (!workspaceId) return [];
+
+  let query = supabase.from("pipeline_stages").select("*").eq("workspace_id", workspaceId);
+  if (pipelineId) query = query.eq("pipeline_id", pipelineId);
+
+  const { data } = await query.order("position", { ascending: true }).returns<PipelineStageRow[]>();
 
   return (data ?? []).map(toStage);
 }

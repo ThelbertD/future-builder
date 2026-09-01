@@ -22,7 +22,7 @@ Open http://localhost:3000. The app runs entirely on the bundled demo dataset, s
 | `/dashboard` | Executive overview |
 | `/finder` | Lead discovery and saved searches |
 | `/leads`, `/leads/[id]` | Lead table and detail |
-| `/pipeline` | Drag-and-drop kanban |
+| `/pipeline` | Drag-and-drop kanban, multiple pipelines, add contacts per stage |
 | `/companies`, `/companies/[id]` | Company directory and detail |
 | `/conversations` | AI inbox |
 | `/outreach` | Campaigns and sequences |

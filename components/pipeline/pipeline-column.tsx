@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 
 import { StageDot } from "@/components/common/indicators";
 import { PipelineCard } from "@/components/pipeline/pipeline-card";
@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, formatCompact } from "@/lib/utils";
 import type { LeadWithRelations, PipelineStage } from "@/types";
 
@@ -23,9 +24,10 @@ interface PipelineColumnProps {
   onEdit: (stage: PipelineStage) => void;
   onDelete: (stage: PipelineStage) => void;
   onMove: (stage: PipelineStage, direction: -1 | 1) => void;
+  onAddLead: (stage: PipelineStage) => void;
 }
 
-export function PipelineColumn({ stage, leads, onEdit, onDelete, onMove }: PipelineColumnProps) {
+export function PipelineColumn({ stage, leads, onEdit, onDelete, onMove, onAddLead }: PipelineColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const value = leads.reduce((total, lead) => total + lead.estimatedValue, 0);
 
@@ -37,26 +39,47 @@ export function PipelineColumn({ stage, leads, onEdit, onDelete, onMove }: Pipel
         <span className="rounded-sm bg-background px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
           {leads.length}
         </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="ml-auto" aria-label={`${stage.name} options`}>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onSelect={() => onEdit(stage)}>
-              <Pencil />
-              Edit stage
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onMove(stage, -1)}>Move left</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onMove(stage, 1)}>Move right</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => onDelete(stage)}>
-              <Trash2 />
-              Delete stage
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <div className="ml-auto flex items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onAddLead(stage)}
+                aria-label={`Add a contact to ${stage.name}`}
+              >
+                <UserPlus />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add a contact to {stage.name}</TooltipContent>
+          </Tooltip>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={`${stage.name} options`}>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => onAddLead(stage)}>
+                <Plus />
+                Add contact
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onEdit(stage)}>
+                <Pencil />
+                Edit stage
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onMove(stage, -1)}>Move left</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onMove(stage, 1)}>Move right</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(stage)}>
+                <Trash2 />
+                Delete stage
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-x border-border bg-muted/20 px-3 py-1.5 text-[11px] text-muted-foreground">
@@ -74,11 +97,18 @@ export function PipelineColumn({ stage, leads, onEdit, onDelete, onMove }: Pipel
         {leads.map((lead) => (
           <PipelineCard key={lead.id} lead={lead} />
         ))}
-        {leads.length === 0 ? (
-          <p className="flex flex-1 items-center justify-center px-3 text-center text-[12px] text-muted-foreground">
-            Drop a lead here
-          </p>
-        ) : null}
+
+        <button
+          type="button"
+          onClick={() => onAddLead(stage)}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[12px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground",
+            leads.length === 0 && "flex-1",
+          )}
+        >
+          <Plus className="size-3.5" />
+          Add contact
+        </button>
       </div>
     </div>
   );

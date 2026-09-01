@@ -436,3 +436,6 @@ export interface MetricSummary {
   deltaPct: number;
   context: string;
 }
+
+/** Lightweight pipeline record for switchers and lists. */
+export type PipelineSummary = Pick<Pipeline, "id" | "name" | "isDefault">;
