@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, Download, KanbanSquare, Radar, Sparkles, X } from "lucide-react";
+import { AtSign, Download, KanbanSquare, Plus, Radar, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { generateOutreachAction } from "@/app/(dashboard)/leads/actions";
 import { discoverContactsAction } from "@/app/(dashboard)/leads/enrich-actions";
 import { EmptyState } from "@/components/common/empty-state";
+import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import { OutreachDraftDialog, type OutreachDraft } from "@/components/leads/outreach-draft-dialog";
 import {
   applyLeadFilters,
@@ -18,7 +19,7 @@ import {
 import { LeadTable, type LeadSortKey } from "@/components/leads/lead-table";
 import { Button } from "@/components/ui/button";
 import { pluralize } from "@/lib/utils";
-import type { LeadWithRelations } from "@/types";
+import type { LeadWithRelations, PipelineStage } from "@/types";
 
 function sortLeads(leads: LeadWithRelations[], sort: LeadSortKey): LeadWithRelations[] {
   const copy = [...leads];
@@ -36,9 +37,11 @@ function sortLeads(leads: LeadWithRelations[], sort: LeadSortKey): LeadWithRelat
 
 export function LeadsExplorer({
   leads,
+  stages,
   initialFilters = DEFAULT_LEAD_FILTERS,
 }: {
   leads: LeadWithRelations[];
+  stages: PipelineStage[];
   initialFilters?: LeadFilters;
 }) {
   const router = useRouter();
@@ -48,6 +51,7 @@ export function LeadsExplorer({
   const [draft, setDraft] = React.useState<OutreachDraft | null>(null);
   const [drafting, setDrafting] = React.useState(false);
   const [enriching, setEnriching] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
 
   const visible = React.useMemo(() => sortLeads(applyLeadFilters(leads, filters), sort), [leads, filters, sort]);
 
@@ -146,7 +150,12 @@ export function LeadsExplorer({
 
   return (
     <div className="space-y-3">
-      <FilterBar filters={filters} onChange={setFilters} resultCount={visible.length} />
+      <FilterBar filters={filters} onChange={setFilters} resultCount={visible.length}>
+        <Button size="sm" onClick={() => setCreating(true)}>
+          <Plus />
+          New lead
+        </Button>
+      </FilterBar>
 
       {visibleSelected.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/25 bg-primary/[0.06] px-3 py-2">
@@ -193,12 +202,13 @@ export function LeadsExplorer({
           title="No leads match these filters"
           description="Widen the score threshold or clear a filter. New opportunities arrive every time a saved search runs."
           action={
-            <Button size="sm" variant="outline" onClick={() => setFilters(DEFAULT_LEAD_FILTERS)}>
-              Clear filters
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus />
+              New lead
             </Button>
           }
           secondaryAction={
-            <Button size="sm" onClick={() => router.push("/finder")}>
+            <Button size="sm" variant="outline" onClick={() => router.push("/finder")}>
               <Radar />
               Find new leads
             </Button>
@@ -214,6 +224,8 @@ export function LeadsExplorer({
           onAction={(action, lead) => void handleAction(action, lead)}
         />
       )}
+
+      <CreateLeadDialog open={creating} stages={stages} onOpenChange={setCreating} />
 
       <OutreachDraftDialog draft={draft} onOpenChange={(open) => !open && setDraft(null)} />
     </div>

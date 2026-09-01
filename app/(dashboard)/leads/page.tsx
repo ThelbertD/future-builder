@@ -7,13 +7,13 @@ import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { LeadsExplorer } from "@/components/leads/leads-explorer";
 import { Button } from "@/components/ui/button";
-import { fetchLeads } from "@/lib/supabase/queries";
+import { fetchLeads, fetchPipelineStages } from "@/lib/supabase/queries";
 import { formatNumber } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Leads" };
 
 export default async function LeadsPage() {
-  const leads = await fetchLeads();
+  const [leads, stages] = await Promise.all([fetchLeads(), fetchPipelineStages()]);
 
   return (
     <PageContainer>
@@ -54,7 +54,7 @@ export default async function LeadsPage() {
           }
         />
       ) : (
-        <LeadsExplorer leads={leads} />
+        <LeadsExplorer leads={leads} stages={stages} />
       )}
     </PageContainer>
   );

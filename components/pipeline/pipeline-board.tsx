@@ -22,7 +22,7 @@ import {
   saveStageAction,
 } from "@/app/(dashboard)/pipeline/actions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { NewLeadDialog } from "@/components/pipeline/new-lead-dialog";
+import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import { PipelineCardContent } from "@/components/pipeline/pipeline-card";
 import { PipelineColumn } from "@/components/pipeline/pipeline-column";
 import { StageDialog } from "@/components/pipeline/stage-dialog";
@@ -225,7 +225,12 @@ export function PipelineBoard({
         onSave={saveStage}
       />
 
-      <NewLeadDialog stage={addingTo} onOpenChange={(open) => !open && setAddingTo(null)} />
+      <CreateLeadDialog
+        open={addingTo !== null}
+        fixedStage={addingTo}
+        stages={stages}
+        onOpenChange={(open) => !open && setAddingTo(null)}
+      />
 
       <ConfirmDialog
         open={deleting !== null}
