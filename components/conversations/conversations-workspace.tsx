@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   Send,
   Sparkles,
+  TriangleAlert,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -80,6 +81,9 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
     setLastDraftId(draftMessage.id);
     setDraft(draftMessage.body);
   }
+
+  // A draft is only sendable if there is somewhere to send it.
+  const recipient = activeLead?.contact?.email;
 
   const sendDraft = async () => {
     if (!draftMessage || !draft.trim()) return;
@@ -226,6 +230,15 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
             </div>
 
             <div className="shrink-0 border-t border-border p-3">
+              {draftMessage && !recipient ? (
+                <p className="mb-2 flex flex-wrap items-center gap-1.5 rounded-md border border-warning/25 bg-warning/10 px-2.5 py-2 text-[12px] text-warning">
+                  <TriangleAlert className="size-3 shrink-0" />
+                  This lead has no contact email, so the draft cannot be sent yet.
+                  <Link href={`/leads/${activeLead.id}`} className="underline underline-offset-2">
+                    Add a contact
+                  </Link>
+                </p>
+              ) : null}
               <div className="relative">
                 <Textarea
                   value={draft}
@@ -250,7 +263,8 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
                       className="ml-auto"
                       onClick={() => void sendDraft()}
                       loading={sending}
-                      disabled={!draft.trim()}
+                      disabled={!draft.trim() || !recipient}
+                      title={recipient ? `Send to ${recipient}` : "No contact email on this lead"}
                     >
                       <Send />
                       Send draft

@@ -5,6 +5,7 @@ import { cache } from "react";
 import { CURRENT_USER, CURRENT_WORKSPACE, WORKSPACE_MEMBERS } from "@/lib/mock";
 import { isSupabaseConfigured, useMockData } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeUrl } from "@/lib/utils";
 import type { User, Workspace, WorkspaceMember, WorkspaceRole } from "@/types";
 
 interface ProfileRow {
@@ -93,7 +94,8 @@ export const getActiveWorkspace = cache(async (): Promise<Workspace | null> => {
     plan: workspace.plan as Workspace["plan"],
     logoUrl: workspace.logo_url ?? undefined,
     // Falls back to the environment value until migration 0005 has run.
-    bookingUrl: workspace.booking_url ?? process.env.NEXT_PUBLIC_BOOKING_URL ?? undefined,
+    bookingUrl:
+      sanitizeUrl(workspace.booking_url) ?? sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
     createdAt: workspace.created_at,
   };
 });

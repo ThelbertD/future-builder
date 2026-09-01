@@ -1,5 +1,5 @@
 import type { User, Workspace, WorkspaceMember } from "@/types";
-import { daysAgo } from "@/lib/utils";
+import { daysAgo, sanitizeUrl } from "@/lib/utils";
 
 export const WORKSPACE_ID = "wsp_futurebuilder";
 
@@ -17,7 +17,7 @@ export const CURRENT_WORKSPACE: Workspace = {
   name: "Future Builder",
   slug: "future-builder",
   plan: "growth",
-  bookingUrl: process.env.NEXT_PUBLIC_BOOKING_URL,
+  bookingUrl: sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
   createdAt: daysAgo(214),
 };
 

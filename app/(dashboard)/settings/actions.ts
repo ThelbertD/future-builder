@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeUrl } from "@/lib/utils";
 
 export interface SettingsResult {
   ok: boolean;
@@ -32,7 +33,7 @@ export async function updateWorkspaceAction(
     .from("workspaces")
     .update({
       name: parsed.data.name,
-      booking_url: parsed.data.bookingUrl || null,
+      booking_url: sanitizeUrl(parsed.data.bookingUrl) ?? null,
     })
     .eq("id", workspaceId);
 

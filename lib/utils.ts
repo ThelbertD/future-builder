@@ -150,3 +150,25 @@ export function nowIso(): string {
 export function nowMs(): number {
   return Date.now();
 }
+
+/**
+ * Normalises a URL that came from configuration.
+ *
+ * Pasting `NAME=https://…` into an environment variable's value field is an
+ * easy mistake and produces a link that renders with the variable name glued to
+ * the front. Strip that, and reject anything that is not really a URL, so a bad
+ * value degrades to "no link" rather than to a broken one in a prospect's inbox.
+ */
+export function sanitizeUrl(value?: string | null): string | undefined {
+  if (!value) return undefined;
+
+  let candidate = value.trim();
+
+  const namePrefix = candidate.match(/^[A-Z][A-Z0-9_]*=(.*)$/s);
+  if (namePrefix) candidate = namePrefix[1].trim();
+
+  candidate = candidate.replace(/^["']|["']$/g, "").trim();
+
+  if (!/^https?:\/\/\S+$/i.test(candidate)) return undefined;
+  return candidate;
+}
