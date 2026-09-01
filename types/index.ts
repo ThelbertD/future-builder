@@ -31,6 +31,8 @@ export interface Workspace {
   slug: string;
   plan: "starter" | "growth" | "scale";
   logoUrl?: string;
+  /** Public scheduling link handed to prospects, e.g. a Calendly URL. */
+  bookingUrl?: string;
   createdAt: ISODate;
 }
 

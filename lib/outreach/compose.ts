@@ -34,7 +34,12 @@ function pick<T>(options: T[], seed: string): T {
   return options[sum % options.length];
 }
 
-export function composeOutreach(lead: LeadWithRelations): ComposedMessage {
+export interface ComposeOptions {
+  /** Scheduling link appended to the close, when the workspace has one. */
+  bookingUrl?: string;
+}
+
+export function composeOutreach(lead: LeadWithRelations, options: ComposeOptions = {}): ComposedMessage {
   const company = lead.company.name;
   const role = lead.jobPost?.title ?? "role like that";
   const services = lead.analysis?.recommendedServices ?? [];
@@ -52,8 +57,13 @@ export function composeOutreach(lead: LeadWithRelations): ComposedMessage {
 
   const evidence = signals.length > 0 ? `\n\nWhat caught my eye: ${signals[0].toLowerCase()}.` : "";
 
+  // A link beats "let me know what suits" — it removes a round trip.
+  const booking = options.bookingUrl
+    ? `\n\nIf it is easier, grab a 30-minute slot directly: ${options.bookingUrl}`
+    : "";
+
   return {
     subject: `Saw your ${role.toLowerCase()} posting`,
-    body: `${greeting}\n\n${opener}\n\n${offer}${evidence}\n\n${closer}`,
+    body: `${greeting}\n\n${opener}\n\n${offer}${evidence}\n\n${closer}${booking}`,
   };
 }

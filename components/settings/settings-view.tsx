@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { updateWorkspaceAction } from "@/app/(dashboard)/settings/actions";
 import { StageDot } from "@/components/common/indicators";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,24 @@ interface SettingsViewProps {
 
 export function SettingsView({ user, workspace, members, stages }: SettingsViewProps) {
   const [section, setSection] = React.useState<SectionId>("profile");
+  const [workspaceName, setWorkspaceName] = React.useState(workspace?.name ?? "");
+  const [bookingUrl, setBookingUrl] = React.useState(workspace?.bookingUrl ?? "");
+  const [savingWorkspace, setSavingWorkspace] = React.useState(false);
+
+  const saveWorkspace = async () => {
+    setSavingWorkspace(true);
+    const result = await updateWorkspaceAction({ name: workspaceName, bookingUrl });
+    setSavingWorkspace(false);
+
+    if (!result.ok) {
+      toast.error("Not saved", { description: result.error });
+      return;
+    }
+
+    toast.success("Workspace saved", {
+      description: bookingUrl ? "Outreach drafts will include your booking link." : undefined,
+    });
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)]">
@@ -181,17 +200,40 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
           <Panel
             title="Workspace"
             description="Workspace-level identity. Every record in the product is scoped to this workspace."
-            footer={<SaveButton />}
+            footer={
+              <Button size="sm" loading={savingWorkspace} onClick={() => void saveWorkspace()}>
+                <Save />
+                Save changes
+              </Button>
+            }
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="workspace-name">Name</Label>
-                <Input id="workspace-name" defaultValue={workspace?.name ?? ""} />
+                <Input
+                  id="workspace-name"
+                  value={workspaceName}
+                  onChange={(event) => setWorkspaceName(event.target.value)}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="workspace-slug">Slug</Label>
-                <Input id="workspace-slug" defaultValue={workspace?.slug ?? ""} />
+                <Input id="workspace-slug" defaultValue={workspace?.slug ?? ""} readOnly />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-url">Booking link</Label>
+              <Input
+                id="booking-url"
+                value={bookingUrl}
+                onChange={(event) => setBookingUrl(event.target.value)}
+                placeholder="https://calendly.com/your-handle/30min"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Appended to every outreach draft so a prospect can book without a reply. Calendly, Cal.com, or
+                any public scheduling URL.
+              </p>
             </div>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
               Workspace ID <code className="font-mono text-[11px]">{workspace?.id ?? "—"}</code> · created{" "}

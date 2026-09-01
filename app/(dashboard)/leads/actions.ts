@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { composeOutreach } from "@/lib/outreach/compose";
-import { getActiveWorkspaceId } from "@/lib/supabase/auth";
+import { getActiveWorkspace, getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
 import { fetchLead } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -35,7 +35,8 @@ export async function generateOutreachAction(
   const lead = await fetchLead(parsed.data.leadId);
   if (!lead) return { ok: false, error: "That lead no longer exists." };
 
-  const draft = composeOutreach(lead);
+  const workspace = await getActiveWorkspace();
+  const draft = composeOutreach(lead, { bookingUrl: workspace?.bookingUrl });
 
   if (useMockData) {
     return { ok: true, ...draft };

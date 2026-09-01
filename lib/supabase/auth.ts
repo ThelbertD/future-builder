@@ -30,6 +30,7 @@ interface MembershipRow {
     slug: string;
     plan: string;
     logo_url: string | null;
+    booking_url?: string | null;
     created_at: string;
   } | null;
   profile?: ProfileRow | null;
@@ -91,6 +92,8 @@ export const getActiveWorkspace = cache(async (): Promise<Workspace | null> => {
     slug: workspace.slug,
     plan: workspace.plan as Workspace["plan"],
     logoUrl: workspace.logo_url ?? undefined,
+    // Falls back to the environment value until migration 0005 has run.
+    bookingUrl: workspace.booking_url ?? process.env.NEXT_PUBLIC_BOOKING_URL ?? undefined,
     createdAt: workspace.created_at,
   };
 });

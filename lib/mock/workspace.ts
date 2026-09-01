@@ -17,6 +17,7 @@ export const CURRENT_WORKSPACE: Workspace = {
   name: "Future Builder",
   slug: "future-builder",
   plan: "growth",
+  bookingUrl: process.env.NEXT_PUBLIC_BOOKING_URL,
   createdAt: daysAgo(214),
 };
 
