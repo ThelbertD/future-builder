@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Send } from "lucide-react";
 
-import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { CampaignsView } from "@/components/outreach/campaigns-view";
@@ -24,15 +22,7 @@ export default async function OutreachPage() {
             : "Sequences that open on the problem a company named, and stop the moment someone replies."
         }
       />
-      {campaigns.length === 0 ? (
-        <EmptyState
-          icon={Send}
-          title="No campaigns yet"
-          description="Create a campaign to enrol qualified leads into a sequence that pauses the moment a prospect replies."
-        />
-      ) : (
-        <CampaignsView campaigns={campaigns} />
-      )}
+      <CampaignsView campaigns={campaigns} />
     </PageContainer>
   );
 }

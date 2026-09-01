@@ -73,6 +73,7 @@ export const CONVERSATIONS: Conversation[] = CONTACTED_LEADS.map((lead, index) =
       sentAt: hoursAgo(hoursOffset),
       readAt: author === "prospect" ? undefined : hoursAgo(hoursOffset - 0.5),
       aiModel,
+      isDraft: false,
     });
   };
 

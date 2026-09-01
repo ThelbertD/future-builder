@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Pause, Play, Plus, Sparkles, Target } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Mail, Pause, Play, Plus, Send, Sparkles, Target } from "lucide-react";
 import { toast } from "sonner";
 
+import { createCampaignAction, setCampaignStatusAction } from "@/app/(dashboard)/outreach/actions";
 import { AIBadge } from "@/components/ai/ai-badge";
+import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,24 +39,29 @@ const STATUS_VARIANTS: Record<CampaignStatus, React.ComponentProps<typeof Badge>
   completed: "default",
 };
 
-export function CampaignsView({ campaigns: initial }: { campaigns: Campaign[] }) {
-  const [campaigns, setCampaigns] = React.useState(initial);
-  const [activeId, setActiveId] = React.useState(initial[0]?.id ?? "");
+export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
+  const router = useRouter();
+  const [activeId, setActiveId] = React.useState(campaigns[0]?.id ?? "");
   const [creating, setCreating] = React.useState(false);
 
   const active = campaigns.find((campaign) => campaign.id === activeId) ?? campaigns[0];
 
-  const toggleStatus = (campaign: Campaign) => {
+  const toggleStatus = async (campaign: Campaign) => {
     const next: CampaignStatus = campaign.status === "active" ? "paused" : "active";
-    setCampaigns((current) =>
-      current.map((item) => (item.id === campaign.id ? { ...item, status: next } : item)),
-    );
+    const result = await setCampaignStatusAction({ campaignId: campaign.id, status: next });
+
+    if (!result.ok) {
+      toast.error("Could not update the campaign", { description: result.error });
+      return;
+    }
+
     toast.success(next === "active" ? "Campaign resumed" : "Campaign paused", {
       description:
         next === "active"
           ? "Enrolled leads will continue through the sequence."
           : "No further messages will send until you resume.",
     });
+    router.refresh();
   };
 
   return (
@@ -92,6 +100,20 @@ export function CampaignsView({ campaigns: initial }: { campaigns: Campaign[] })
           </button>
         ))}
       </div>
+
+      {campaigns.length === 0 ? (
+        <EmptyState
+          icon={Send}
+          title="No campaigns yet"
+          description="A campaign enrols qualified leads into a sequence that opens on the problem they named, and stops the moment someone replies."
+          action={
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus />
+              Create your first campaign
+            </Button>
+          }
+        />
+      ) : null}
 
       {active ? (
         <div className="space-y-4">
@@ -211,15 +233,7 @@ export function CampaignsView({ campaigns: initial }: { campaigns: Campaign[] })
         </div>
       ) : null}
 
-      <NewCampaignDialog
-        open={creating}
-        onOpenChange={setCreating}
-        onCreate={(campaign) => {
-          setCampaigns((current) => [campaign, ...current]);
-          setActiveId(campaign.id);
-        }}
-        template={initial[0]}
-      />
+      <NewCampaignDialog open={creating} onOpenChange={setCreating} />
     </div>
   );
 }
@@ -227,37 +241,40 @@ export function CampaignsView({ campaigns: initial }: { campaigns: Campaign[] })
 function NewCampaignDialog({
   open,
   onOpenChange,
-  onCreate,
-  template,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (campaign: Campaign) => void;
-  template?: Campaign;
 }) {
+  const router = useRouter();
   const [name, setName] = React.useState("");
   const [minScore, setMinScore] = React.useState("80");
   const [service, setService] = React.useState<string>(SERVICES[0]);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const submit = () => {
-    if (!name.trim() || !template) return;
-    const campaign: Campaign = {
-      ...template,
-      id: `cmp_out_${Date.now()}`,
-      name: name.trim(),
-      status: "draft",
+  const submit = async () => {
+    if (!name.trim()) return;
+
+    setSaving(true);
+    setError(null);
+    const result = await createCampaignAction({
+      name,
       minScore: Number(minScore),
       services: [service],
-      audienceSummary: `Leads matching ${service} · AI score above ${minScore}`,
-      stats: { enrolled: 0, sent: 0, delivered: 0, opened: 0, replied: 0, interested: 0, booked: 0 },
-      steps: template.steps.map((step) => ({ ...step, id: `${step.id}_${Date.now()}`, sent: 0, opened: 0, replied: 0 })),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    onCreate(campaign);
+    });
+    setSaving(false);
+
+    if (!result.ok) {
+      setError(result.error ?? "Could not create the campaign.");
+      return;
+    }
+
     onOpenChange(false);
     setName("");
-    toast.success("Campaign created", { description: "It starts as a draft — review the sequence before activating." });
+    toast.success("Campaign created", {
+      description: "It starts as a draft — review the sequence before activating.",
+    });
+    router.refresh();
   };
 
   return (
@@ -308,11 +325,17 @@ function NewCampaignDialog({
           </div>
         </div>
 
+        {error ? (
+          <p role="alert" className="rounded-md border border-destructive/25 bg-destructive/10 px-2.5 py-2 text-[12px] text-destructive">
+            {error}
+          </p>
+        ) : null}
+
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button size="sm" onClick={submit} disabled={!name.trim()}>
+          <Button size="sm" onClick={submit} loading={saving} disabled={!name.trim()}>
             Create campaign
           </Button>
         </DialogFooter>

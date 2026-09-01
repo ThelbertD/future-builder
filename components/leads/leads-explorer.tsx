@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { Download, KanbanSquare, Radar, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { generateOutreachAction } from "@/app/(dashboard)/leads/actions";
 import { EmptyState } from "@/components/common/empty-state";
+import { OutreachDraftDialog, type OutreachDraft } from "@/components/leads/outreach-draft-dialog";
 import {
   applyLeadFilters,
   DEFAULT_LEAD_FILTERS,
@@ -42,6 +44,8 @@ export function LeadsExplorer({
   const [filters, setFilters] = React.useState<LeadFilters>(initialFilters);
   const [sort, setSort] = React.useState<LeadSortKey>("score");
   const [selected, setSelected] = React.useState<string[]>([]);
+  const [draft, setDraft] = React.useState<OutreachDraft | null>(null);
+  const [drafting, setDrafting] = React.useState(false);
 
   const visible = React.useMemo(() => sortLeads(applyLeadFilters(leads, filters), sort), [leads, filters, sort]);
 
@@ -52,13 +56,52 @@ export function LeadsExplorer({
     [selected, visible],
   );
 
-  const handleAction = (action: string, lead: LeadWithRelations) => {
+  /** Drafts a message for every selected lead, sequentially so writes stay ordered. */
+  const draftForSelected = async () => {
+    if (drafting || visibleSelected.length === 0) return;
+
+    setDrafting(true);
+    let created = 0;
+
+    for (const id of visibleSelected) {
+      const result = await generateOutreachAction({ leadId: id });
+      if (result.ok) created += 1;
+    }
+
+    setDrafting(false);
+
+    if (created === 0) {
+      toast.error("No drafts were created");
+      return;
+    }
+
+    toast.success(`${pluralize(created, "draft")} ready`, {
+      description: "Open Conversations to review each one before sending.",
+    });
+    router.refresh();
+  };
+
+  const handleAction = async (action: string, lead: LeadWithRelations) => {
     switch (action) {
-      case "outreach":
-        toast.success("Outreach drafted", {
-          description: `The assistant prepared a first message for ${lead.company.name}.`,
+      case "outreach": {
+        if (drafting) return;
+        setDrafting(true);
+        const result = await generateOutreachAction({ leadId: lead.id });
+        setDrafting(false);
+
+        if (!result.ok) {
+          toast.error("Could not draft outreach", { description: result.error });
+          return;
+        }
+
+        setDraft({
+          companyName: lead.company.name,
+          subject: result.subject ?? "",
+          body: result.body ?? "",
+          conversationId: result.conversationId,
         });
         break;
+      }
       case "contact":
         router.push("/conversations");
         break;
@@ -90,15 +133,7 @@ export function LeadsExplorer({
               <KanbanSquare />
               Add to pipeline
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                toast.success("Outreach queued", {
-                  description: `The assistant is drafting ${pluralize(visibleSelected.length, "message")}.`,
-                })
-              }
-            >
+            <Button size="sm" variant="outline" loading={drafting} onClick={() => void draftForSelected()}>
               <Sparkles />
               Generate outreach
             </Button>
@@ -141,9 +176,11 @@ export function LeadsExplorer({
           onSelectedChange={setSelected}
           sort={sort}
           onSortChange={setSort}
-          onAction={handleAction}
+          onAction={(action, lead) => void handleAction(action, lead)}
         />
       )}
+
+      <OutreachDraftDialog draft={draft} onOpenChange={(open) => !open && setDraft(null)} />
     </div>
   );
 }

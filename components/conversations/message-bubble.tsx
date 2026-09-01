@@ -1,4 +1,4 @@
-import { Sparkles, User } from "lucide-react";
+import { PencilLine, Sparkles, User } from "lucide-react";
 
 import { cn, formatTime } from "@/lib/utils";
 import type { Message } from "@/types";
@@ -19,6 +19,12 @@ export function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={cn("flex flex-col gap-1", outbound ? "items-end" : "items-start")}>
       <div className="flex items-center gap-1.5 px-1">
+        {message.isDraft ? (
+          <span className="inline-flex items-center gap-1 rounded-sm border border-warning/30 bg-warning/10 px-1 py-0.5 text-[10px] font-medium text-warning">
+            <PencilLine className="size-2.5" />
+            Draft · not sent
+          </span>
+        ) : null}
         {message.author === "ai" ? (
           <span className="inline-flex items-center gap-1 rounded-sm border border-primary/25 bg-primary/10 px-1 py-0.5 text-[10px] font-medium text-primary">
             <Sparkles className="size-2.5" />
@@ -39,6 +45,7 @@ export function MessageBubble({ message }: { message: Message }) {
       <div
         className={cn(
           "max-w-[85%] rounded-lg border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap",
+          message.isDraft && "border-dashed",
           outbound
             ? message.author === "ai"
               ? "border-primary/20 bg-primary/[0.07]"

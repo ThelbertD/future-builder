@@ -152,6 +152,7 @@ export interface MessageRow {
   sent_at: string;
   read_at: string | null;
   ai_model: string | null;
+  is_draft?: boolean | null;
 }
 
 export interface ConversationRow {
@@ -409,6 +410,7 @@ export function toMessage(row: MessageRow): Message {
     sentAt: row.sent_at,
     readAt: row.read_at ?? undefined,
     aiModel: row.ai_model ?? undefined,
+    isDraft: Boolean(row.is_draft),
   };
 }
 

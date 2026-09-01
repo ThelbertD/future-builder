@@ -238,6 +238,8 @@ export interface Message {
   sentAt: ISODate;
   readAt?: ISODate;
   aiModel?: string;
+  /** A generated draft awaiting review. Never sent. */
+  isDraft: boolean;
 }
 
 export interface Conversation {

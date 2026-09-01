@@ -89,6 +89,7 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
       body: draft.trim(),
       channel: active.channel,
       sentAt: nowIso(),
+      isDraft: false,
     };
     setConversations((current) =>
       current.map((conversation) =>
