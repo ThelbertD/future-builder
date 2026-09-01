@@ -2,13 +2,24 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Bookmark, Clock, Plus, Radar, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import {
+  Bookmark,
+  CircleAlert,
+  Clock,
+  Download,
+  Plus,
+  Radar,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { importLeadsAction, searchLeadsAction } from "@/app/(dashboard)/finder/actions";
 import { AIBadge } from "@/components/ai/ai-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
-import { LeadTable, type LeadSortKey } from "@/components/leads/lead-table";
+import { DiscoveryTable } from "@/components/leads/discovery-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,73 +31,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DATE_RANGES, INDUSTRIES, KEYWORD_SUGGESTIONS, LOCATIONS, SERVICES, SOURCES } from "@/lib/constants";
-import { formatRelative, pluralize } from "@/lib/utils";
-import type { LeadWithRelations, SavedSearch } from "@/types";
+import { DATE_RANGES, INDUSTRIES, KEYWORD_SUGGESTIONS, LOCATIONS, SERVICES } from "@/lib/constants";
+import type { ScoredJob } from "@/lib/scraper/scoring";
+import type { SourceOutcome } from "@/lib/scraper/types";
+import { cn, formatRelative, pluralize } from "@/lib/utils";
+import type { SavedSearch } from "@/types";
 
 interface SearchState {
   keywords: string[];
   location: string;
   industry: string;
   service: string;
-  source: string;
   posted: string;
   minScore: string;
   intent: string;
 }
 
 const INITIAL_STATE: SearchState = {
-  keywords: ["GoHighLevel Specialist"],
+  keywords: ["Automation", "GoHighLevel", "CRM"],
   location: "United States",
   industry: "all",
   service: "all",
-  source: "all",
-  posted: "7d",
-  minScore: "70",
+  posted: "30d",
+  minScore: "0",
   intent: "all",
 };
 
-const SCORE_OPTIONS = ["0", "60", "70", "80", "90"];
+const SCORE_OPTIONS = ["0", "50", "60", "70", "80"];
+const DAYS_BY_RANGE: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "90d": 90 };
 
-function matches(lead: LeadWithRelations, state: SearchState): boolean {
-  if (state.minScore !== "0" && lead.score < Number(state.minScore)) return false;
-  if (state.intent !== "all" && lead.intent !== state.intent) return false;
-  if (state.source !== "all" && lead.source !== state.source) return false;
-  if (state.industry !== "all" && lead.company.industry !== state.industry) return false;
-  if (state.location !== "Remote" && state.location !== "all" && !lead.company.country.includes(state.location)) {
-    return false;
-  }
-  // Services are advisory: an unanalysed lead is never excluded by this filter.
-  if (state.service !== "all" && lead.analysis && !lead.analysis.recommendedServices.includes(state.service)) {
-    return false;
-  }
-  if (state.keywords.length === 0) return true;
-
-  const haystack = `${lead.jobPost?.title ?? ""} ${lead.jobPost?.skills.join(" ") ?? ""}`.toLowerCase();
-  return state.keywords.some((keyword) =>
-    keyword
-      .toLowerCase()
-      .split(" ")
-      .some((token) => token.length > 2 && haystack.includes(token)),
-  );
-}
-
-export function FinderWorkspace({
-  leads,
-  savedSearches,
-}: {
-  leads: LeadWithRelations[];
-  savedSearches: SavedSearch[];
-}) {
+export function FinderWorkspace({ savedSearches }: { savedSearches: SavedSearch[] }) {
   const router = useRouter();
   const [state, setState] = React.useState<SearchState>(INITIAL_STATE);
   const [draftKeyword, setDraftKeyword] = React.useState("");
   const [searching, setSearching] = React.useState(false);
-  const [results, setResults] = React.useState<LeadWithRelations[]>(() =>
-    leads.filter((lead) => matches(lead, INITIAL_STATE)),
-  );
+  const [importing, setImporting] = React.useState(false);
+  const [results, setResults] = React.useState<ScoredJob[]>([]);
+  const [outcomes, setOutcomes] = React.useState<SourceOutcome[]>([]);
+  const [fetched, setFetched] = React.useState(0);
+  const [hasSearched, setHasSearched] = React.useState(false);
   const [selected, setSelected] = React.useState<string[]>([]);
-  const [sort, setSort] = React.useState<LeadSortKey>("score");
 
   const set = <K extends keyof SearchState>(key: K, value: SearchState[K]) =>
     setState((current) => ({ ...current, [key]: value }));
@@ -98,25 +82,63 @@ export function FinderWorkspace({
     setDraftKeyword("");
   };
 
-  const runSearch = React.useCallback(() => {
+  const runSearch = async (override?: SearchState) => {
+    const query = override ?? state;
     setSearching(true);
-    window.setTimeout(() => {
-      const next = leads.filter((lead) => matches(lead, state));
-      setResults(next);
-      setSearching(false);
-      toast.success("Search complete", {
-        description: `${pluralize(next.length, "opportunity", "opportunities")} matched across ${SOURCES.length} sources.`,
-      });
-    }, 700);
-  }, [leads, state]);
+    setSelected([]);
 
-  const sorted = React.useMemo(() => {
-    const copy = [...results];
-    if (sort === "company") return copy.sort((a, b) => a.company.name.localeCompare(b.company.name));
-    if (sort === "posted") return copy.sort((a, b) => (b.jobPost?.postedAt ?? "").localeCompare(a.jobPost?.postedAt ?? ""));
-    if (sort === "value") return copy.sort((a, b) => b.estimatedValue - a.estimatedValue);
-    return copy.sort((a, b) => b.score - a.score);
-  }, [results, sort]);
+    const response = await searchLeadsAction({
+      keywords: query.keywords,
+      location: query.location,
+      industry: query.industry === "all" ? undefined : query.industry,
+      service: query.service === "all" ? undefined : query.service,
+      postedWithinDays: DAYS_BY_RANGE[query.posted] ?? 30,
+      minScore: Number(query.minScore),
+      intent: query.intent === "all" ? undefined : query.intent,
+    });
+
+    setSearching(false);
+    setHasSearched(true);
+    setOutcomes(response.outcomes);
+    setFetched(response.fetched);
+
+    if (!response.ok) {
+      setResults([]);
+      toast.error("Search failed", { description: response.error });
+      return;
+    }
+
+    setResults(response.jobs);
+
+    const live = response.outcomes.filter((outcome) => outcome.ok).length;
+    toast.success("Search complete", {
+      description: `${pluralize(response.jobs.length, "opportunity", "opportunities")} matched from ${response.fetched} postings across ${live} sources.`,
+    });
+  };
+
+  const importSelected = async () => {
+    const chosen = results.filter((job) => selected.includes(job.id));
+    if (chosen.length === 0) return;
+
+    setImporting(true);
+    const response = await importLeadsAction(chosen);
+    setImporting(false);
+
+    if (!response.ok) {
+      toast.error("Import failed", { description: response.error });
+      return;
+    }
+
+    toast.success(`${pluralize(response.imported, "lead")} imported`, {
+      description:
+        response.skipped > 0
+          ? `${response.skipped} were already in your workspace.`
+          : "They are in the first stage of your pipeline.",
+    });
+
+    setSelected([]);
+    router.refresh();
+  };
 
   return (
     <div className="space-y-4">
@@ -224,23 +246,6 @@ export function FinderWorkspace({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Source</Label>
-              <Select value={state.source} onValueChange={(value) => set("source", value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
-                  {SOURCES.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
               <Label>Date posted</Label>
               <Select value={state.posted} onValueChange={(value) => set("posted", value)}>
                 <SelectTrigger>
@@ -257,7 +262,7 @@ export function FinderWorkspace({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Minimum AI score</Label>
+              <Label>Minimum score</Label>
               <Select value={state.minScore} onValueChange={(value) => set("minScore", value)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -288,10 +293,10 @@ export function FinderWorkspace({
               </Select>
             </div>
 
-            <div className="flex items-end gap-2">
-              <Button className="flex-1" onClick={runSearch} loading={searching}>
+            <div className="flex items-end gap-2 lg:col-span-2">
+              <Button className="flex-1" onClick={() => void runSearch()} loading={searching}>
                 <Search />
-                Search
+                Search live sources
               </Button>
               <Button variant="outline" size="icon" aria-label="Advanced filters">
                 <SlidersHorizontal />
@@ -301,7 +306,7 @@ export function FinderWorkspace({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2.5">
-          <AIBadge label="AI scoring on" size="sm" />
+          <AIBadge label="Scoring on" size="sm" />
           <span className="text-[12px] text-muted-foreground">
             Every result is scored and explained before it reaches your pipeline.
           </span>
@@ -319,26 +324,31 @@ export function FinderWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-3 xl:order-1">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-semibold tracking-tight">
-              {searching ? "Searching…" : `${results.length} opportunities`}
+              {searching ? "Searching live sources…" : `${results.length} opportunities`}
             </h2>
+
+            {outcomes.length > 0 && !searching ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {outcomes.map((outcome) => (
+                  <Badge
+                    key={outcome.sourceId}
+                    variant={outcome.ok ? "outline" : "warning"}
+                    title={outcome.error}
+                  >
+                    {!outcome.ok ? <CircleAlert /> : null}
+                    {outcome.sourceName} {outcome.ok ? outcome.count : "unavailable"}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+
             {selected.length > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    toast.success("Added to pipeline", {
-                      description: `${pluralize(selected.length, "lead")} moved to Ready to Contact.`,
-                    })
-                  }
-                >
-                  Add to pipeline
-                </Button>
-                <Button size="sm" onClick={() => router.push("/outreach")}>
-                  <Sparkles />
-                  Generate outreach
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button size="sm" onClick={() => void importSelected()} loading={importing}>
+                  <Download />
+                  Import {selected.length} to pipeline
                 </Button>
               </div>
             ) : null}
@@ -349,22 +359,35 @@ export function FinderWorkspace({
           ) : results.length === 0 ? (
             <EmptyState
               icon={Radar}
-              title="No opportunities matched"
-              description="Try a broader keyword, a lower score threshold, or a wider date range. Saved searches keep looking in the background."
+              title={hasSearched ? "No opportunities matched" : "Run your first search"}
+              description={
+                hasSearched
+                  ? `Scanned ${fetched} live postings. Try a broader keyword, a lower score threshold, or a wider date range.`
+                  : "Searches run against live job feeds. Pick your keywords and press Search to see who is hiring right now."
+              }
               action={
-                <Button size="sm" variant="outline" onClick={() => setState(INITIAL_STATE)}>
-                  Reset search
+                <Button size="sm" onClick={() => void runSearch()} loading={searching}>
+                  <Search />
+                  {hasSearched ? "Search again" : "Search live sources"}
                 </Button>
+              }
+              secondaryAction={
+                hasSearched ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setState(INITIAL_STATE);
+                      void runSearch(INITIAL_STATE);
+                    }}
+                  >
+                    Reset filters
+                  </Button>
+                ) : null
               }
             />
           ) : (
-            <LeadTable
-              leads={sorted}
-              selected={selected}
-              onSelectedChange={setSelected}
-              sort={sort}
-              onSortChange={setSort}
-            />
+            <DiscoveryTable jobs={results} selected={selected} onSelectedChange={setSelected} />
           )}
         </div>
 
@@ -373,37 +396,44 @@ export function FinderWorkspace({
             <h2 className="text-[15px] font-semibold tracking-tight">Saved searches</h2>
             <Bookmark className="size-3.5 text-muted-foreground" />
           </div>
-          <ul className="divide-y divide-border">
-            {savedSearches.map((search) => (
-              <li key={search.id} className="px-4 py-3">
-                <button
-                  type="button"
-                  className="w-full text-left"
-                  onClick={() => {
-                    setState((current) => ({
-                      ...current,
-                      keywords: [...search.keywords],
-                      location: search.location,
-                      industry: search.industry,
-                      minScore: String(search.minScore),
-                    }));
-                    toast(`Loaded "${search.name}"`, { description: "Press Search to run it now." });
-                  }}
-                >
-                  <p className="text-[13px] font-medium">{search.name}</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Clock className="size-3" />
-                    Every {search.cadenceHours}h · ran {formatRelative(search.lastRunAt)}
-                  </p>
-                </button>
-                {search.newResults > 0 ? (
-                  <Badge variant="primary" className="mt-2">
-                    {search.newResults} new
-                  </Badge>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {savedSearches.length === 0 ? (
+            <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+              Save a search to keep it running in the background.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {savedSearches.map((search) => (
+                <li key={search.id} className={cn("px-4 py-3")}>
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => {
+                      const next: SearchState = {
+                        ...state,
+                        keywords: [...search.keywords],
+                        location: search.location || state.location,
+                        industry: search.industry || "all",
+                        minScore: String(search.minScore),
+                      };
+                      setState(next);
+                      void runSearch(next);
+                    }}
+                  >
+                    <p className="text-[13px] font-medium">{search.name}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="size-3" />
+                      Every {search.cadenceHours}h · ran {formatRelative(search.lastRunAt)}
+                    </p>
+                  </button>
+                  {search.newResults > 0 ? (
+                    <Badge variant="primary" className="mt-2">
+                      {search.newResults} new
+                    </Badge>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
     </div>

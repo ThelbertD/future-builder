@@ -5,18 +5,18 @@ import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { FinderWorkspace } from "@/components/leads/finder-workspace";
 import { Button } from "@/components/ui/button";
-import { fetchLeads, fetchSavedSearches } from "@/lib/supabase/queries";
+import { fetchSavedSearches } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = { title: "Lead Finder" };
 
 export default async function FinderPage() {
-  const [leads, savedSearches] = await Promise.all([fetchLeads(), fetchSavedSearches()]);
+  const savedSearches = await fetchSavedSearches();
 
   return (
     <PageContainer>
       <PageHeader
         title="Find your next client"
-        description="Discover companies actively looking for your services, scored before you spend a minute on them."
+        description="Search live job feeds for companies hiring right now, scored and explained before you spend a minute on them."
         actions={
           <Button variant="outline" size="sm">
             <Bookmark />
@@ -24,7 +24,7 @@ export default async function FinderPage() {
           </Button>
         }
       />
-      <FinderWorkspace leads={leads} savedSearches={savedSearches} />
+      <FinderWorkspace savedSearches={savedSearches} />
     </PageContainer>
   );
 }
