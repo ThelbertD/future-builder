@@ -6,7 +6,7 @@ import { CURRENT_USER, CURRENT_WORKSPACE, WORKSPACE_MEMBERS } from "@/lib/mock";
 import { isSupabaseConfigured, useMockData } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeUrl } from "@/lib/utils";
-import type { User, Workspace, WorkspaceMember, WorkspaceRole } from "@/types";
+import type { AISettings, NotificationPrefs, User, Workspace, WorkspaceMember, WorkspaceRole } from "@/types";
 
 interface ProfileRow {
   id: string;
@@ -15,6 +15,7 @@ interface ProfileRow {
   avatar_url: string | null;
   job_title: string | null;
   timezone: string | null;
+  notification_prefs?: NotificationPrefs | null;
   created_at: string;
 }
 
@@ -32,6 +33,7 @@ interface MembershipRow {
     plan: string;
     logo_url: string | null;
     booking_url?: string | null;
+    ai_settings?: AISettings | null;
     created_at: string;
   } | null;
   profile?: ProfileRow | null;
@@ -52,7 +54,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, full_name, avatar_url, job_title, timezone, created_at")
+    .select("*")
     .eq("id", auth.user.id)
     .maybeSingle<ProfileRow>();
 
@@ -63,6 +65,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     avatarUrl: profile?.avatar_url ?? undefined,
     jobTitle: profile?.job_title ?? undefined,
     timezone: profile?.timezone ?? "UTC",
+    notificationPrefs: profile?.notification_prefs ?? {},
     createdAt: profile?.created_at ?? auth.user.created_at,
   };
 });
@@ -96,6 +99,7 @@ export const getActiveWorkspace = cache(async (): Promise<Workspace | null> => {
     // Falls back to the environment value until migration 0005 has run.
     bookingUrl:
       sanitizeUrl(workspace.booking_url) ?? sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
+    aiSettings: workspace.ai_settings ?? {},
     createdAt: workspace.created_at,
   };
 });

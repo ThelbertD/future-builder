@@ -15,6 +15,9 @@ export type ISODate = string;
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 
+/** Per-user notification toggles, keyed by notification kind. */
+export type NotificationPrefs = Record<string, boolean>;
+
 export interface User {
   id: UUID;
   email: string;
@@ -22,7 +25,27 @@ export interface User {
   avatarUrl?: string;
   jobTitle?: string;
   timezone: string;
+  notificationPrefs: NotificationPrefs;
   createdAt: ISODate;
+}
+
+/** Model, prompt and automation rules for a workspace. */
+export interface AISettings {
+  provider?: string;
+  model?: string;
+  temperature?: number;
+  systemPrompt?: string;
+  services?: string[];
+  tone?: string;
+  minQualifyScore?: number;
+  autoBook?: boolean;
+  handoffOnPricing?: boolean;
+  handoffAfterReplies?: number;
+  autoQualify?: boolean;
+  autoDraft?: boolean;
+  autoSend?: boolean;
+  businessName?: string;
+  targetCustomers?: string;
 }
 
 export interface Workspace {
@@ -33,6 +56,7 @@ export interface Workspace {
   logoUrl?: string;
   /** Public scheduling link handed to prospects, e.g. a Calendly URL. */
   bookingUrl?: string;
+  aiSettings: AISettings;
   createdAt: ISODate;
 }
 

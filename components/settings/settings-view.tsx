@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   Building,
@@ -12,12 +13,19 @@ import {
   Shield,
   Sparkles,
   User,
-  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateWorkspaceAction } from "@/app/(dashboard)/settings/actions";
+import {
+  updateAISettingsAction,
+  updateMemberRoleAction,
+  updateNotificationsAction,
+  updatePasswordAction,
+  updateProfileAction,
+  updateWorkspaceAction,
+  type SettingsResult,
+} from "@/app/(dashboard)/settings/actions";
 import { StageDot } from "@/components/common/indicators";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type { PipelineStage, User as UserRecord, Workspace, WorkspaceMember } from "@/types";
 import { cn, formatDate, initials } from "@/lib/utils";
+import type { PipelineStage, User as UserRecord, Workspace, WorkspaceMember } from "@/types";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
@@ -49,6 +57,60 @@ const SECTIONS = [
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
+
+const NOTIFICATIONS = [
+  {
+    key: "high_intent_lead",
+    title: "High-intent leads",
+    description: "A new lead scores above your threshold.",
+    fallback: true,
+  },
+  {
+    key: "prospect_replied",
+    title: "Prospect replies",
+    description: "Someone responds to outreach on any channel.",
+    fallback: true,
+  },
+  {
+    key: "appointment_booked",
+    title: "Appointments booked",
+    description: "A call is confirmed on your calendar.",
+    fallback: true,
+  },
+  {
+    key: "handoff_required",
+    title: "Human intervention required",
+    description: "The assistant hits a rule it will not answer on its own.",
+    fallback: true,
+  },
+  {
+    key: "weekly_summary",
+    title: "Weekly summary",
+    description: "Monday morning digest of pipeline movement.",
+    fallback: false,
+  },
+];
+
+const AI_TOGGLES = [
+  {
+    key: "autoQualify" as const,
+    title: "Auto-qualify new leads",
+    description: "Score every discovered opportunity on capture.",
+    fallback: true,
+  },
+  {
+    key: "autoDraft" as const,
+    title: "Auto-draft outreach",
+    description: "Prepare a first message for qualified leads.",
+    fallback: true,
+  },
+  {
+    key: "autoSend" as const,
+    title: "Auto-send outreach",
+    description: "Send without review. Off by default, deliberately.",
+    fallback: false,
+  },
+];
 
 function Panel({
   title,
@@ -73,36 +135,6 @@ function Panel({
   );
 }
 
-function SaveButton({ label = "Save changes" }: { label?: string }) {
-  return (
-    <Button size="sm" onClick={() => toast.success("Settings saved")}>
-      <Save />
-      {label}
-    </Button>
-  );
-}
-
-function ToggleRow({
-  title,
-  description,
-  defaultChecked = true,
-}: {
-  title: string;
-  description: string;
-  defaultChecked?: boolean;
-}) {
-  const [checked, setChecked] = React.useState(defaultChecked);
-  return (
-    <label className="flex items-center gap-3 p-3">
-      <Switch checked={checked} onCheckedChange={setChecked} />
-      <span className="min-w-0">
-        <span className="block text-[13px] font-medium">{title}</span>
-        <span className="block text-[12px] text-muted-foreground">{description}</span>
-      </span>
-    </label>
-  );
-}
-
 interface SettingsViewProps {
   user: UserRecord;
   workspace: Workspace | null;
@@ -111,24 +143,45 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ user, workspace, members, stages }: SettingsViewProps) {
+  const router = useRouter();
   const [section, setSection] = React.useState<SectionId>("profile");
+  const [saving, setSaving] = React.useState<string | null>(null);
+
+  const [fullName, setFullName] = React.useState(user.fullName);
+  const [jobTitle, setJobTitle] = React.useState(user.jobTitle ?? "");
+  const [timezone, setTimezone] = React.useState(user.timezone || "UTC");
+
   const [workspaceName, setWorkspaceName] = React.useState(workspace?.name ?? "");
   const [bookingUrl, setBookingUrl] = React.useState(workspace?.bookingUrl ?? "");
-  const [savingWorkspace, setSavingWorkspace] = React.useState(false);
 
-  const saveWorkspace = async () => {
-    setSavingWorkspace(true);
-    const result = await updateWorkspaceAction({ name: workspaceName, bookingUrl });
-    setSavingWorkspace(false);
+  const [prefs, setPrefs] = React.useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      NOTIFICATIONS.map((item) => [item.key, user.notificationPrefs[item.key] ?? item.fallback]),
+    ),
+  );
+
+  const [aiToggles, setAiToggles] = React.useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      AI_TOGGLES.map((item) => [item.key, workspace?.aiSettings[item.key] ?? item.fallback]),
+    ),
+  );
+
+  const [password, setPassword] = React.useState("");
+
+  /** One helper for every panel: run, report, refresh. */
+  const run = async (key: string, action: () => Promise<SettingsResult>, success: string) => {
+    setSaving(key);
+    const result = await action();
+    setSaving(null);
 
     if (!result.ok) {
       toast.error("Not saved", { description: result.error });
-      return;
+      return false;
     }
 
-    toast.success("Workspace saved", {
-      description: bookingUrl ? "Outreach drafts will include your booking link." : undefined,
-    });
+    toast.success(success);
+    router.refresh();
+    return true;
   };
 
   return (
@@ -156,39 +209,70 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
 
       <div className="space-y-4">
         {section === "profile" ? (
-          <Panel title="Profile" description="How you appear to your team across the workspace." footer={<SaveButton />}>
+          <Panel
+            title="Profile"
+            description="How you appear to your team across the workspace."
+            footer={
+              <Button
+                size="sm"
+                loading={saving === "profile"}
+                onClick={() =>
+                  void run(
+                    "profile",
+                    () => updateProfileAction({ fullName, jobTitle, timezone }),
+                    "Profile saved",
+                  )
+                }
+              >
+                <Save />
+                Save changes
+              </Button>
+            }
+          >
             <div className="flex items-center gap-3">
               <Avatar className="size-12">
-                <AvatarFallback className="text-[15px]">{initials(user.fullName)}</AvatarFallback>
+                <AvatarFallback className="text-[15px]">{initials(fullName || user.email)}</AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm">
-                Change photo
-              </Button>
+              <p className="text-[12px] text-muted-foreground">
+                Avatars come from your account provider. Uploads arrive with file storage.
+              </p>
             </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="full-name">Full name</Label>
-                <Input id="full-name" defaultValue={user.fullName} />
+                <Input id="full-name" value={fullName} onChange={(event) => setFullName(event.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={user.email} />
+                <Input id="email" type="email" value={user.email} readOnly disabled />
+                <p className="text-[11px] text-muted-foreground">
+                  Your sign-in address. Changing it requires re-verification.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="job-title">Job title</Label>
-                <Input id="job-title" defaultValue={user.jobTitle} />
+                <Input
+                  id="job-title"
+                  value={jobTitle}
+                  onChange={(event) => setJobTitle(event.target.value)}
+                  placeholder="Founder"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Timezone</Label>
-                <Select defaultValue={user.timezone}>
+                <Select value={timezone} onValueChange={setTimezone}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
                     <SelectItem value="America/New_York">America/New_York</SelectItem>
                     <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
                     <SelectItem value="Europe/London">Europe/London</SelectItem>
                     <SelectItem value="Asia/Manila">Asia/Manila</SelectItem>
+                    <SelectItem value="Asia/Singapore">Asia/Singapore</SelectItem>
+                    <SelectItem value="Australia/Sydney">Australia/Sydney</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -201,7 +285,17 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
             title="Workspace"
             description="Workspace-level identity. Every record in the product is scoped to this workspace."
             footer={
-              <Button size="sm" loading={savingWorkspace} onClick={() => void saveWorkspace()}>
+              <Button
+                size="sm"
+                loading={saving === "workspace"}
+                onClick={() =>
+                  void run(
+                    "workspace",
+                    () => updateWorkspaceAction({ name: workspaceName, bookingUrl }),
+                    "Workspace saved",
+                  )
+                }
+              >
                 <Save />
                 Save changes
               </Button>
@@ -218,7 +312,7 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="workspace-slug">Slug</Label>
-                <Input id="workspace-slug" defaultValue={workspace?.slug ?? ""} readOnly />
+                <Input id="workspace-slug" defaultValue={workspace?.slug ?? ""} readOnly disabled />
               </div>
             </div>
 
@@ -231,10 +325,10 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
                 placeholder="https://calendly.com/your-handle/30min"
               />
               <p className="text-[11px] text-muted-foreground">
-                Appended to every outreach draft so a prospect can book without a reply. Calendly, Cal.com, or
-                any public scheduling URL.
+                Appended to every outreach draft so a prospect can book without a reply.
               </p>
             </div>
+
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
               Workspace ID <code className="font-mono text-[11px]">{workspace?.id ?? "—"}</code> · created{" "}
               {workspace ? formatDate(workspace.createdAt) : "—"}
@@ -245,13 +339,7 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
         {section === "team" ? (
           <Panel
             title="Team"
-            description="Members inherit workspace access through row level security roles."
-            footer={
-              <Button size="sm" onClick={() => toast.success("Invitation sent")}>
-                <UserPlus />
-                Invite member
-              </Button>
-            }
+            description="Roles are enforced by row level security, not just the interface. Changes save immediately."
           >
             <ul className="divide-y divide-border rounded-md border border-border">
               {members.map((member) => (
@@ -264,7 +352,20 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
                     <p className="truncate text-[12px] text-muted-foreground">{member.user.email}</p>
                   </div>
                   {member.status === "invited" ? <Badge variant="warning">Invited</Badge> : null}
-                  <Select defaultValue={member.role}>
+                  <Select
+                    defaultValue={member.role}
+                    onValueChange={(role) =>
+                      void run(
+                        `role-${member.id}`,
+                        () =>
+                          updateMemberRoleAction({
+                            memberId: member.id,
+                            role: role as WorkspaceMember["role"],
+                          }),
+                        `${member.user.fullName} is now ${role}`,
+                      )
+                    }
+                  >
                     <SelectTrigger className="w-28">
                       <SelectValue />
                     </SelectTrigger>
@@ -278,24 +379,50 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
                 </li>
               ))}
             </ul>
+
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
+              Invitations need an email sender bound to the workspace and are not wired up yet. For now, ask a
+              teammate to sign up, then assign their role here.
+            </p>
           </Panel>
         ) : null}
 
         {section === "notifications" ? (
-          <Panel title="Notifications" description="What reaches you, and where." footer={<SaveButton />}>
+          <Panel
+            title="Notifications"
+            description="What reaches you, and where."
+            footer={
+              <Button
+                size="sm"
+                loading={saving === "notifications"}
+                onClick={() =>
+                  void run(
+                    "notifications",
+                    () => updateNotificationsAction({ prefs }),
+                    "Notification settings saved",
+                  )
+                }
+              >
+                <Save />
+                Save changes
+              </Button>
+            }
+          >
             <div className="divide-y divide-border rounded-md border border-border">
-              <ToggleRow title="High-intent leads" description="A new lead scores above your threshold." />
-              <ToggleRow title="Prospect replies" description="Someone responds to outreach on any channel." />
-              <ToggleRow title="Appointments booked" description="A call is confirmed on your calendar." />
-              <ToggleRow
-                title="Human intervention required"
-                description="The assistant hits a rule it will not answer on its own."
-              />
-              <ToggleRow
-                title="Weekly summary"
-                description="Monday morning digest of pipeline movement."
-                defaultChecked={false}
-              />
+              {NOTIFICATIONS.map((item) => (
+                <label key={item.key} className="flex items-center gap-3 p-3">
+                  <Switch
+                    checked={prefs[item.key] ?? item.fallback}
+                    onCheckedChange={(checked) =>
+                      setPrefs((current) => ({ ...current, [item.key]: checked }))
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium">{item.title}</span>
+                    <span className="block text-[12px] text-muted-foreground">{item.description}</span>
+                  </span>
+                </label>
+              ))}
             </div>
           </Panel>
         ) : null}
@@ -305,8 +432,11 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
             title="Pipeline"
             description="Stages, probabilities, and the default board for new leads."
             footer={
-              <Button asChild size="sm" variant="outline">
-                <Link href="/pipeline">Open board</Link>
+              <Button asChild size="sm">
+                <Link href="/pipeline">
+                  <KanbanSquare />
+                  Edit on the board
+                </Link>
               </Button>
             }
           >
@@ -320,31 +450,55 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
                   {stage.isLost ? <Badge variant="destructive">Lost</Badge> : null}
                 </li>
               ))}
+              {stages.length === 0 ? (
+                <li className="px-3 py-6 text-center text-[13px] text-muted-foreground">No stages yet.</li>
+              ) : null}
             </ul>
+            <p className="text-[12px] text-muted-foreground">
+              Stages are created, renamed, reordered and deleted on the board itself, where you can see the
+              leads they hold.
+            </p>
           </Panel>
         ) : null}
 
         {section === "ai" ? (
           <Panel
             title="AI"
-            description="Model, prompt, and automation rules live on their own page."
+            description="What the assistant does on its own. Model and prompt live on their own page."
             footer={
-              <Button asChild size="sm">
-                <Link href="/ai-settings">
-                  <Sparkles />
-                  Open AI settings
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/ai-settings">
+                    <Sparkles />
+                    Model and prompt
+                  </Link>
+                </Button>
+                <Button
+                  size="sm"
+                  loading={saving === "ai"}
+                  onClick={() => void run("ai", () => updateAISettingsAction(aiToggles), "AI settings saved")}
+                >
+                  <Save />
+                  Save changes
+                </Button>
+              </div>
             }
           >
             <div className="divide-y divide-border rounded-md border border-border">
-              <ToggleRow title="Auto-qualify new leads" description="Score every discovered opportunity on capture." />
-              <ToggleRow title="Auto-draft outreach" description="Prepare a first message for qualified leads." />
-              <ToggleRow
-                title="Auto-send outreach"
-                description="Send without review. Off by default."
-                defaultChecked={false}
-              />
+              {AI_TOGGLES.map((item) => (
+                <label key={item.key} className="flex items-center gap-3 p-3">
+                  <Switch
+                    checked={aiToggles[item.key] ?? item.fallback}
+                    onCheckedChange={(checked) =>
+                      setAiToggles((current) => ({ ...current, [item.key]: checked }))
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium">{item.title}</span>
+                    <span className="block text-[12px] text-muted-foreground">{item.description}</span>
+                  </span>
+                </label>
+              ))}
             </div>
           </Panel>
         ) : null}
@@ -363,74 +517,70 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
             }
           >
             <p className="text-[13px] text-muted-foreground">
-              Supabase, OpenAI, and Google Calendar are connected. Credentials are held server-side; the browser only
-              ever receives the public anon key.
+              Credentials are read from server-side environment variables and never stored in the database,
+              where any workspace member could read them. The integrations page shows what is actually
+              configured.
             </p>
           </Panel>
         ) : null}
 
         {section === "security" ? (
-          <Panel title="Security" description="Access, sessions, and data handling." footer={<SaveButton />}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" defaultValue="••••••••••" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Session length</Label>
-                <Select defaultValue="30">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">7 days</SelectItem>
-                    <SelectItem value="30">30 days</SelectItem>
-                    <SelectItem value="90">90 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="divide-y divide-border rounded-md border border-border">
-              <ToggleRow title="Two-factor authentication" description="Require a second factor at sign-in." />
-              <ToggleRow
-                title="Restrict exports to admins"
-                description="Only owners and admins can export lead data."
+          <Panel
+            title="Security"
+            description="Access and credentials."
+            footer={
+              <Button
+                size="sm"
+                loading={saving === "password"}
+                disabled={password.length < 8}
+                onClick={async () => {
+                  const done = await run(
+                    "password",
+                    () => updatePasswordAction({ password }),
+                    "Password changed",
+                  );
+                  if (done) setPassword("");
+                }}
+              >
+                <Save />
+                Change password
+              </Button>
+            }
+          >
+            <div className="space-y-1.5 sm:max-w-sm">
+              <Label htmlFor="password">New password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 8 characters"
+                autoComplete="new-password"
               />
+              <p className="text-[11px] text-muted-foreground">
+                Takes effect immediately. Other sessions stay signed in.
+              </p>
+            </div>
+
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
+              Two-factor authentication is not wired up yet. It needs an enrolment and challenge flow, not just
+              a toggle, so it is absent rather than fake.
             </div>
           </Panel>
         ) : null}
 
         {section === "billing" ? (
-          <Panel
-            title="Billing"
-            description="Plan, usage, and invoices."
-            footer={
-              <Button size="sm" variant="outline">
-                View invoices
-              </Button>
-            }
-          >
+          <Panel title="Billing" description="Plan and usage.">
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
               <div>
                 <p className="text-[13px] font-medium capitalize">{workspace?.plan ?? "starter"} plan</p>
-                <p className="text-[12px] text-muted-foreground">Billed monthly · renews in 12 days</p>
+                <p className="text-[12px] text-muted-foreground">No payment provider is connected.</p>
               </div>
-              <Button size="sm" className="ml-auto">
-                Upgrade
-              </Button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                ["Leads this month", "1,284 / 2,500"],
-                ["AI actions", "8,412 / 20,000"],
-                ["Seats", "3 / 5"],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-md border border-border p-3">
-                  <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
-                  <p className="mt-1 text-[13px] font-medium tabular-nums">{value}</p>
-                </div>
-              ))}
-            </div>
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
+              Billing needs a payment provider with plans, a checkout session and a webhook to keep the plan in
+              sync. Until that exists, an upgrade button that charges nothing would be worse than none.
+            </p>
           </Panel>
         ) : null}
       </div>

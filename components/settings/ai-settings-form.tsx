@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Play, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,8 +21,10 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { updateAISettingsAction } from "@/app/(dashboard)/settings/actions";
 import { SERVICES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import type { AISettings } from "@/types";
 
 const MODELS: Record<string, string[]> = {
   openai: ["gpt-4.1", "gpt-4.1-mini", "o4-mini"],
@@ -55,21 +58,71 @@ function Section({
   );
 }
 
-export function AISettingsForm() {
-  const [provider, setProvider] = React.useState("openai");
-  const [model, setModel] = React.useState(MODELS.openai[0]);
-  const [temperature, setTemperature] = React.useState([0.3]);
-  const [systemPrompt, setSystemPrompt] = React.useState(DEFAULT_SYSTEM_PROMPT);
-  const [services, setServices] = React.useState<string[]>([
-    "GoHighLevel Automation",
-    "CRM Automation",
-    "AI Automation",
-  ]);
-  const [tone, setTone] = React.useState("direct");
-  const [minQualifyScore, setMinQualifyScore] = React.useState("70");
-  const [autoBook, setAutoBook] = React.useState(true);
-  const [handoffOnPricing, setHandoffOnPricing] = React.useState(true);
-  const [handoffAfterReplies, setHandoffAfterReplies] = React.useState("3");
+export function AISettingsForm({ settings }: { settings: AISettings }) {
+  const router = useRouter();
+  const [saving, setSaving] = React.useState(false);
+  const [provider, setProvider] = React.useState(settings.provider ?? "openai");
+  const [model, setModel] = React.useState(settings.model ?? MODELS.openai[0]);
+  const [temperature, setTemperature] = React.useState([settings.temperature ?? 0.3]);
+  const [systemPrompt, setSystemPrompt] = React.useState(settings.systemPrompt ?? DEFAULT_SYSTEM_PROMPT);
+  const [businessName, setBusinessName] = React.useState(settings.businessName ?? "Future Builder");
+  const [targetCustomers, setTargetCustomers] = React.useState(
+    settings.targetCustomers ?? "Agencies and service businesses with 10-200 staff",
+  );
+  const [services, setServices] = React.useState<string[]>(
+    settings.services ?? ["GoHighLevel Automation", "CRM Automation", "AI Automation"],
+  );
+  const [tone, setTone] = React.useState(settings.tone ?? "direct");
+  const [minQualifyScore, setMinQualifyScore] = React.useState(String(settings.minQualifyScore ?? 70));
+  const [autoBook, setAutoBook] = React.useState(settings.autoBook ?? true);
+  const [handoffOnPricing, setHandoffOnPricing] = React.useState(settings.handoffOnPricing ?? true);
+  const [handoffAfterReplies, setHandoffAfterReplies] = React.useState(
+    String(settings.handoffAfterReplies ?? 3),
+  );
+
+  /** Restores the shipped defaults in the form. Nothing is written until save. */
+  const resetToDefaults = () => {
+    setProvider("openai");
+    setModel(MODELS.openai[0]);
+    setTemperature([0.3]);
+    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+    setBusinessName("Future Builder");
+    setTargetCustomers("Agencies and service businesses with 10-200 staff");
+    setServices(["GoHighLevel Automation", "CRM Automation", "AI Automation"]);
+    setTone("direct");
+    setMinQualifyScore("70");
+    setAutoBook(true);
+    setHandoffOnPricing(true);
+    setHandoffAfterReplies("3");
+    toast("Defaults restored", { description: "Press Save changes to keep them." });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const result = await updateAISettingsAction({
+      provider,
+      model,
+      temperature: temperature[0],
+      systemPrompt,
+      businessName,
+      targetCustomers,
+      services,
+      tone,
+      minQualifyScore: Number(minQualifyScore),
+      autoBook,
+      handoffOnPricing,
+      handoffAfterReplies: Number(handoffAfterReplies),
+    });
+    setSaving(false);
+
+    if (!result.ok) {
+      toast.error("Not saved", { description: result.error });
+      return;
+    }
+
+    toast.success("AI settings saved");
+    router.refresh();
+  };
   const [testInput, setTestInput] = React.useState(
     "We posted a GoHighLevel specialist role. What do you actually do and how fast can you start?",
   );
@@ -159,13 +212,18 @@ export function AISettingsForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="business-name">Business name</Label>
-            <Input id="business-name" defaultValue="Future Builder" />
+            <Input
+              id="business-name"
+              value={businessName}
+              onChange={(event) => setBusinessName(event.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="target-customer">Target customers</Label>
             <Input
               id="target-customer"
-              defaultValue="Agencies and service businesses with 10-200 staff"
+              value={targetCustomers}
+              onChange={(event) => setTargetCustomers(event.target.value)}
             />
           </div>
         </div>
@@ -288,10 +346,10 @@ export function AISettingsForm() {
       </Section>
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={resetToDefaults}>
           Reset to defaults
         </Button>
-        <Button size="sm" onClick={() => toast.success("AI settings saved")}>
+        <Button size="sm" loading={saving} onClick={() => void save()}>
           <Save />
           Save changes
         </Button>

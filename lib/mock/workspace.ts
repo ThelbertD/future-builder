@@ -9,6 +9,7 @@ export const CURRENT_USER: User = {
   fullName: "Thelbert Delos Reyes",
   jobTitle: "Founder",
   timezone: "America/New_York",
+  notificationPrefs: {},
   createdAt: daysAgo(214),
 };
 
@@ -18,6 +19,7 @@ export const CURRENT_WORKSPACE: Workspace = {
   slug: "future-builder",
   plan: "growth",
   bookingUrl: sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
+  aiSettings: {},
   createdAt: daysAgo(214),
 };
 
