@@ -80,6 +80,7 @@ async function latestHiringStoryId(signal: AbortSignal): Promise<number | null> 
 export const hackerNews: SourceAdapter = {
   id: "hackernews",
   name: "Hacker News",
+  kind: "hiring" as const,
   homepage: "https://news.ycombinator.com",
 
   async fetchJobs(_query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -117,6 +118,7 @@ export const hackerNews: SourceAdapter = {
         description: comment,
         url: `https://news.ycombinator.com/item?id=${hit.objectID}`,
         postedAt: hit.created_at ? new Date(hit.created_at).toISOString() : new Date().toISOString(),
+        kind: "hiring" as const,
         tags: ["who-is-hiring"],
       });
     }

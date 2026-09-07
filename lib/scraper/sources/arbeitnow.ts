@@ -27,6 +27,7 @@ function engagementFor(types: string[] = []): EngagementType {
 export const arbeitnow: SourceAdapter = {
   id: "arbeitnow",
   name: "Arbeitnow",
+  kind: "hiring" as const,
   homepage: "https://www.arbeitnow.com",
 
   async fetchJobs(_query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -54,6 +55,7 @@ export const arbeitnow: SourceAdapter = {
       postedAt: job.created_at
         ? new Date(job.created_at * 1000).toISOString()
         : new Date().toISOString(),
+      kind: "hiring" as const,
       tags: (job.tags ?? []).slice(0, 12),
     }));
   },

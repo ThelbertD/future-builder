@@ -47,6 +47,16 @@ export const INTEGRATIONS: Integration[] = [
     docsUrl: "https://resend.com/docs",
   },
   {
+    id: "consulti",
+    name: "Consulti",
+    category: "Data",
+    description:
+      "Licensed B2B and Google Maps databases. The only source that returns a verified contact address with the lead.",
+    status: "available",
+    icon: "Database",
+    docsUrl: "https://app.consulti.ai",
+  },
+  {
     id: "google-calendar",
     name: "Google Calendar",
     category: "Calendar",

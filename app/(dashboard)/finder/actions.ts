@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { runLeadSearch } from "@/lib/scraper";
+import { hostnameOf } from "@/lib/scraper/html";
 import type { ScoredJob } from "@/lib/scraper/scoring";
 import type { SourceOutcome } from "@/lib/scraper/types";
 import { getActiveWorkspaceId } from "@/lib/supabase/auth";
@@ -56,6 +57,8 @@ export interface ImportResponse {
   error?: string;
   imported: number;
   skipped: number;
+  /** How many arrived with a contact address, so are sendable immediately. */
+  withContact: number;
 }
 
 /**
@@ -66,7 +69,7 @@ export interface ImportResponse {
  * Postings already imported are skipped by their source URL.
  */
 export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportResponse> {
-  if (jobs.length === 0) return { ok: true, imported: 0, skipped: 0 };
+  if (jobs.length === 0) return { ok: true, imported: 0, skipped: 0, withContact: 0 };
 
   if (useMockData) {
     return {
@@ -74,11 +77,12 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
       error: "Connect Supabase to import discovered leads into your workspace.",
       imported: 0,
       skipped: 0,
+      withContact: 0,
     };
   }
 
   const [supabase, workspaceId] = await Promise.all([createClient(), getActiveWorkspaceId()]);
-  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", imported: 0, skipped: 0 };
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", imported: 0, skipped: 0, withContact: 0 };
 
   // Everything lands in the first stage of the default pipeline.
   const { data: pipeline } = await supabase
@@ -89,7 +93,7 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
     .limit(1)
     .maybeSingle<{ id: string }>();
 
-  if (!pipeline) return { ok: false, error: "This workspace has no pipeline yet.", imported: 0, skipped: 0 };
+  if (!pipeline) return { ok: false, error: "This workspace has no pipeline yet.", imported: 0, skipped: 0, withContact: 0 };
 
   const { data: stage } = await supabase
     .from("pipeline_stages")
@@ -100,7 +104,7 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
     .limit(1)
     .maybeSingle<{ id: string; name: string }>();
 
-  if (!stage) return { ok: false, error: "That pipeline has no stages yet.", imported: 0, skipped: 0 };
+  if (!stage) return { ok: false, error: "That pipeline has no stages yet.", imported: 0, skipped: 0, withContact: 0 };
 
   const urls = jobs.map((job) => job.url);
   const { data: existing } = await supabase
@@ -114,6 +118,7 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
 
   let imported = 0;
   let skipped = 0;
+  let withContact = 0;
 
   for (const job of jobs) {
     if (alreadyImported.has(job.url)) {
@@ -138,6 +143,10 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
           workspace_id: workspaceId,
           name: job.companyName,
           location: job.location,
+          website: job.companyUrl ?? null,
+          domain: hostnameOf(job.companyUrl ?? "") ?? null,
+          industry: job.industry ?? null,
+          employee_count: job.employeeCount ?? null,
           status: "prospect",
           lead_score: job.score,
           tags: job.recommendedServices.slice(0, 2),
@@ -150,6 +159,41 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
         continue;
       }
       companyId = created.id;
+    }
+
+    // Database sources carry the contact with the record, which is the whole
+    // point of using them: the lead is sendable the moment it is imported.
+    let contactId: string | null = null;
+
+    if (job.contact?.email) {
+      const { data: existingContact } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("email", job.contact.email)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+
+      if (existingContact) {
+        contactId = existingContact.id;
+      } else {
+        const { data: created } = await supabase
+          .from("contacts")
+          .insert({
+            workspace_id: workspaceId,
+            company_id: companyId,
+            full_name: job.contact.fullName,
+            email: job.contact.email,
+            phone: job.contact.phone ?? null,
+            title: job.contact.title ?? null,
+            linkedin_url: job.contact.linkedinUrl ?? null,
+            is_primary: true,
+          })
+          .select("id")
+          .single<{ id: string }>();
+
+        contactId = created?.id ?? null;
+      }
     }
 
     const { data: post } = await supabase
@@ -175,6 +219,7 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
       .insert({
         workspace_id: workspaceId,
         company_id: companyId,
+        contact_id: contactId,
         job_post_id: post?.id ?? null,
         stage_id: stage.id,
         status: "new",
@@ -210,11 +255,12 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
     });
 
     imported += 1;
+    if (contactId) withContact += 1;
   }
 
   revalidatePath("/leads");
   revalidatePath("/pipeline");
   revalidatePath("/companies");
 
-  return { ok: true, imported, skipped };
+  return { ok: true, imported, skipped, withContact };
 }

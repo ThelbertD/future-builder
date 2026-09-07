@@ -464,6 +464,11 @@ function resolveStatus(integration: Integration): Integration {
         ? { ...integration, status: "connected" }
         : { ...integration, note: "Set ANTHROPIC_API_KEY on the server." };
 
+    case "consulti":
+      return process.env.CONSULTI_API_KEY
+        ? { ...integration, status: "connected", note: "B2B and local search enabled in the Lead Finder" }
+        : { ...integration, note: "Set CONSULTI_API_KEY on the server." };
+
     case "email-provider": {
       const email = emailProviderStatus();
       if (email.configured) {

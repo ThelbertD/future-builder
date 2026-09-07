@@ -35,6 +35,7 @@ const PAGES = [1, 2, 3];
 export const theMuse: SourceAdapter = {
   id: "themuse",
   name: "The Muse",
+  kind: "hiring" as const,
   homepage: "https://www.themuse.com",
 
   async fetchJobs(query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -78,6 +79,7 @@ export const theMuse: SourceAdapter = {
         description: toPlainText(job.contents ?? ""),
         url: landing,
         postedAt: new Date(job.publication_date).toISOString(),
+        kind: "hiring" as const,
         tags: [
           ...(job.categories ?? []).map((entry) => entry.name),
           ...(job.levels ?? []).map((entry) => entry.name),

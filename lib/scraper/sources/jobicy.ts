@@ -36,6 +36,7 @@ function engagementFor(types: string[] = []): EngagementType {
 export const jobicy: SourceAdapter = {
   id: "jobicy",
   name: "Jobicy",
+  kind: "hiring" as const,
   homepage: "https://jobicy.com",
 
   async fetchJobs(_query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -73,6 +74,7 @@ export const jobicy: SourceAdapter = {
         description: toPlainText(job.jobDescription || job.jobExcerpt || ""),
         url: job.url,
         postedAt: new Date(job.pubDate).toISOString(),
+        kind: "hiring" as const,
         tags: (job.jobIndustry ?? []).slice(0, 6),
       });
 

@@ -130,10 +130,14 @@ export function FinderWorkspace({ savedSearches }: { savedSearches: SavedSearch[
     }
 
     toast.success(`${pluralize(response.imported, "lead")} imported`, {
-      description:
-        response.skipped > 0
-          ? `${response.skipped} were already in your workspace.`
-          : "They are in the first stage of your pipeline.",
+      description: [
+        response.withContact > 0
+          ? `${response.withContact} arrived with a contact address, ready to send.`
+          : "None carried a contact address — use Find contacts on the Leads page.",
+        response.skipped > 0 ? `${response.skipped} were already in your workspace.` : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
 
     setSelected([]);

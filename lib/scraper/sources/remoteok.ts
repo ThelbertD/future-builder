@@ -31,6 +31,7 @@ function salaryText(job: RemoteOkJob): string | undefined {
 export const remoteok: SourceAdapter = {
   id: "remoteok",
   name: "Remote OK",
+  kind: "hiring" as const,
   homepage: "https://remoteok.com",
 
   async fetchJobs(_query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -62,6 +63,7 @@ export const remoteok: SourceAdapter = {
         url: job.url ?? job.apply_url ?? `https://remoteok.com/remote-jobs/${job.slug ?? job.id}`,
         postedAt: job.date ? new Date(job.date).toISOString() : new Date().toISOString(),
         salaryText: salaryText(job),
+        kind: "hiring" as const,
         tags: (job.tags ?? []).slice(0, 12),
       }));
   },

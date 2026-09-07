@@ -30,6 +30,7 @@ const ENGAGEMENT: Record<string, EngagementType> = {
 export const remotive: SourceAdapter = {
   id: "remotive",
   name: "Remotive",
+  kind: "hiring" as const,
   homepage: "https://remotive.com",
 
   async fetchJobs(query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]> {
@@ -58,6 +59,7 @@ export const remotive: SourceAdapter = {
       url: job.url,
       postedAt: new Date(job.publication_date).toISOString(),
       salaryText: job.salary || undefined,
+      kind: "hiring" as const,
       tags: (job.tags ?? []).slice(0, 12),
     }));
   },

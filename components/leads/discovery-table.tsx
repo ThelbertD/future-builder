@@ -40,6 +40,7 @@ export function DiscoveryTable({ jobs, selected, onSelectedChange }: DiscoveryTa
               </TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Opportunity</TableHead>
+              <TableHead>Contact</TableHead>
               <TableHead className="hidden lg:table-cell">Source</TableHead>
               <TableHead>Score</TableHead>
               <TableHead>Intent</TableHead>
@@ -78,6 +79,16 @@ export function DiscoveryTable({ jobs, selected, onSelectedChange }: DiscoveryTa
                       ))}
                     </div>
                   ) : null}
+                </TableCell>
+                <TableCell>
+                  {job.contact?.email ? (
+                    <>
+                      <p className="truncate text-[12px]">{job.contact.fullName}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{job.contact.email}</p>
+                    </>
+                  ) : (
+                    <span className="text-[12px] text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="hidden text-muted-foreground lg:table-cell">{job.sourceName}</TableCell>
                 <TableCell>
@@ -137,7 +148,12 @@ export function DiscoveryTable({ jobs, selected, onSelectedChange }: DiscoveryTa
                 <ExternalLink className="size-3" />
               </a>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            {job.contact?.email ? (
+              <p className="mt-2 truncate text-[11px] text-muted-foreground">
+                {job.contact.fullName} · {job.contact.email}
+              </p>
+            ) : null}
+            <p className="mt-1 text-[11px] text-muted-foreground">
               {job.location} · {formatRelative(job.postedAt)}
             </p>
           </li>

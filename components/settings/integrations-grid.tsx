@@ -144,6 +144,10 @@ const SETUP_STEPS: Record<string, { vars: string[]; help: string }> = {
     help: "Project dashboard → Settings → API Keys.",
   },
   openai: { vars: ["OPENAI_API_KEY"], help: "platform.openai.com → API keys." },
+  consulti: {
+    vars: ["CONSULTI_API_KEY"],
+    help: "app.consulti.ai → Settings → Integrations → generate key. Keys start with capi_. Once set, the Lead Finder searches the B2B and Google Maps databases alongside the free job feeds, and those results carry a contact address.",
+  },
   anthropic: { vars: ["ANTHROPIC_API_KEY"], help: "console.anthropic.com → API keys." },
   "email-provider": {
     vars: ["RESEND_API_KEY", "EMAIL_FROM"],

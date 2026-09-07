@@ -67,7 +67,97 @@ function intentForScore(score: number): IntentLevel {
   return "low";
 }
 
+/**
+ * A database record scores on a different basis to a job posting.
+ *
+ * There is no posting to read for urgency, and no salary to read for budget.
+ * What there is instead is a named contact with a deliverable address, which is
+ * worth more than any inferred signal: it is the difference between a lead you
+ * can write to today and one you cannot.
+ */
+function scoreDatabaseRecord(job: ScrapedJob, query: SearchQuery): ScoredJob {
+  const signals: string[] = [];
+  const risks: string[] = [];
+
+  const email = job.contact?.email;
+  const verified = job.contact?.emailStatus === "good" || job.contact?.emailStatus === "valid";
+
+  let intentSignals = 12;
+  if (job.contact?.title) {
+    intentSignals += 10;
+    signals.push(`Named contact: ${job.contact.fullName}, ${job.contact.title}`);
+  } else if (job.contact) {
+    signals.push(`Contact on file: ${job.contact.fullName}`);
+  }
+
+  const haystack = `${job.title} ${job.industry ?? ""} ${job.tags.join(" ")}`.toLowerCase();
+  const keywordHit = query.keywords.some((keyword) =>
+    keyword
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((token) => token.length > 2)
+      .some((token) => haystack.includes(token)),
+  );
+  if (keywordHit) {
+    intentSignals += 8;
+    signals.push("Matches your search terms");
+  }
+  intentSignals = Math.min(MAX.intentSignals, intentSignals);
+
+  let budgetFit = 0;
+  if (email) {
+    budgetFit += verified ? 22 : 16;
+    signals.push(verified ? "Deliverable address on record" : "Address on record");
+  } else {
+    risks.push("No email address on this record");
+  }
+
+  const matchedServices = SERVICE_MATCHERS.filter(([pattern]) =>
+    pattern.test(`${job.title} ${job.industry ?? ""} ${job.description}`),
+  ).map(([, service]) => service);
+  const recommendedServices = Array.from(new Set(matchedServices)).slice(0, 3);
+  const serviceMatch = Math.min(MAX.serviceMatch, recommendedServices.length * 8);
+
+  let companyFit = 6;
+  if (job.employeeCount && job.employeeCount >= 5 && job.employeeCount <= 500) {
+    companyFit += 8;
+    signals.push(`${job.employeeCount} employees, inside your target size`);
+  } else if (job.employeeCount && job.employeeCount > 500) {
+    risks.push("Large organisation, so expect a longer procurement process");
+  }
+  companyFit = Math.min(MAX.companyFit, companyFit);
+
+  // Nothing here is time-sensitive, so timing is neutral rather than penalised.
+  const timing = 6;
+
+  const breakdown: LeadScoreBreakdown = { intentSignals, budgetFit, serviceMatch, companyFit, timing };
+  const score = Math.min(100, intentSignals + budgetFit + serviceMatch + companyFit + timing);
+  const leadService = recommendedServices[0] ?? "workflow automation";
+
+  return {
+    ...job,
+    score,
+    intent: intentForScore(score),
+    breakdown,
+    signals: signals.slice(0, 5),
+    risks: risks.slice(0, 3),
+    reasoning: `${job.companyName} comes from ${job.sourceName}${
+      job.industry ? ` in ${job.industry}` : ""
+    }${job.contact ? `, with ${job.contact.fullName} on file` : ""}. ${
+      email
+        ? "There is an address to write to, so this can be contacted today."
+        : "No address on the record, so a contact has to be found first."
+    } Lead with ${leadService.toLowerCase()}.`,
+    recommendedServices,
+    opportunityType: "Direct Client",
+    confidence: email ? 82 : 60,
+    estimatedValue: 4000,
+  };
+}
+
 export function scoreJob(job: ScrapedJob, query: SearchQuery): ScoredJob {
+  if (job.kind === "database") return scoreDatabaseRecord(job, query);
+
   const haystack = `${job.title} ${job.tags.join(" ")} ${job.description}`;
   const signals: string[] = [];
   const risks: string[] = [];
