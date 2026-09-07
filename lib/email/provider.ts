@@ -41,15 +41,33 @@ export interface EmailProviderStatus {
 
 const FROM_PATTERN = /^[^@\s]+@[^@\s.]+\.[^@\s]+$|^.+<[^@\s]+@[^@\s.]+\.[^@\s]+>$/;
 
+/**
+ * Reads a credential the way a hosting dashboard tends to store it.
+ *
+ * Pasting a value into Vercel or an .env file often carries surrounding quotes
+ * or a stray newline, and the mail server then rejects the login with a 535
+ * indistinguishable from a wrong password. Stripping them costs nothing: no
+ * real credential here begins and ends with a quote.
+ */
+function credential(name: string): string | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+
+  const unquoted = raw.trim().replace(/^"([^]*)"$/, "$1").replace(/^'([^]*)'$/, "$1");
+  return unquoted.trim() || undefined;
+}
+
 /** Gmail needs no host or port; everything else must state them. */
 function smtpSettings() {
-  const user = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASSWORD;
+  const user = credential("SMTP_USER");
+  // Gmail displays an App Password in four groups of four; it ignores the
+  // spaces on login, so accept the value either way.
+  const password = credential("SMTP_PASSWORD")?.replace(/\s+/g, "");
   if (!user || !password) return null;
 
   const isGmail = /@gmail\.com$/i.test(user);
-  const host = process.env.SMTP_HOST ?? (isGmail ? "smtp.gmail.com" : undefined);
-  const port = Number(process.env.SMTP_PORT ?? (isGmail ? 465 : 587));
+  const host = credential("SMTP_HOST") ?? (isGmail ? "smtp.gmail.com" : undefined);
+  const port = Number(credential("SMTP_PORT") ?? (isGmail ? 465 : 587));
 
   if (!host) return null;
 
@@ -57,9 +75,9 @@ function smtpSettings() {
 }
 
 export function emailProviderStatus(): EmailProviderStatus {
-  const from = process.env.EMAIL_FROM;
+  const from = credential("EMAIL_FROM");
   const smtp = smtpSettings();
-  const resendKey = process.env.RESEND_API_KEY;
+  const resendKey = credential("RESEND_API_KEY");
   const missing: string[] = [];
 
   if (!from) missing.push("EMAIL_FROM");
@@ -117,7 +135,7 @@ async function sendViaSmtp(message: EmailMessage, from: string): Promise<SendRes
       return {
         ok: false,
         error:
-          "The mail server rejected those credentials. For Gmail you need an App Password, not your account password, and two-step verification must be on.",
+          "The mail server rejected the password this environment is using. For Gmail it must be a 16-character App Password with two-step verification on. If sending works locally, the copy in your hosting environment is stale — update SMTP_PASSWORD there and redeploy.",
       };
     }
     if (/timeout|ETIMEDOUT|ECONNREFUSED/i.test(detail)) {
@@ -135,7 +153,7 @@ async function sendViaResend(message: EmailMessage, from: string): Promise<SendR
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        authorization: `Bearer ${credential("RESEND_API_KEY")}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({

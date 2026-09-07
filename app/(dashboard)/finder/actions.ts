@@ -250,7 +250,17 @@ export async function importLeadsAction(jobs: ScoredJob[]): Promise<ImportRespon
       reasoning: job.reasoning,
       signals: job.signals,
       risks: job.risks,
-      suggested_next_action: `Open ${job.companyName} on ${job.sourceName} and reference the specific requirement in the first message.`,
+      // A directory record has no advertised requirement to reference, so
+      // telling the user to quote one sends them looking for something that
+      // does not exist.
+      suggested_next_action:
+        job.kind === "database"
+          ? `${job.companyName} advertised nothing, so open with what they do rather than a vacancy${
+              job.contact?.email
+                ? `. Write to ${job.contact.email}`
+                : ". Find an address on their site first"
+            }.`
+          : `Open ${job.companyName} on ${job.sourceName} and reference the specific requirement in the first message.`,
       confidence: job.confidence,
       model: "heuristic-v1",
     });

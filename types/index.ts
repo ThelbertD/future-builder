@@ -123,7 +123,10 @@ export type LeadSource =
   | "Facebook Groups"
   | "Company Site"
   | "Reddit"
-  | "Referral";
+  | "Referral"
+  // A business directory rather than a job board: its records describe what a
+  // company is, so outreach for one must not mention a vacancy.
+  | "OpenStreetMap";
 
 export type EngagementType = "Full-time" | "Part-time" | "Contract" | "Freelance" | "Retainer";
 

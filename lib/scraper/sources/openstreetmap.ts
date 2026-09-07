@@ -121,6 +121,40 @@ function tag(tags: Record<string, string>, key: string): string | undefined {
   return tags[key] || tags[`contact:${key}`] || undefined;
 }
 
+/**
+ * Readable names for the categories these selectors return.
+ *
+ * Title-casing a raw tag value is wrong more often than it looks: "it" becomes
+ * "It", which reached outreach as "hiring a it". These are named the way
+ * somebody would actually say them.
+ */
+const CATEGORY_LABELS: Record<string, string> = {
+  it: "IT services",
+  hvac: "HVAC contractor",
+  advertising_agency: "Advertising agency",
+  marketing: "Marketing agency",
+  estate_agent: "Estate agency",
+  consulting: "Consultancy",
+  financial: "Financial services",
+  insurance: "Insurance brokerage",
+  accountant: "Accountancy",
+  lawyer: "Law firm",
+  architect: "Architecture practice",
+  educational_institution: "Education provider",
+  driving_school: "Driving school",
+  fitness_centre: "Gym",
+  doctors: "Medical practice",
+  dentist: "Dental practice",
+  physiotherapist: "Physiotherapy practice",
+  wholesale: "Wholesaler",
+};
+
+function describeCategory(value: string): string {
+  return (
+    CATEGORY_LABELS[value] ?? value.replace(/_/g, " ").replace(/^\w/, (character) => character.toUpperCase())
+  );
+}
+
 export const openStreetMap: SourceAdapter = {
   id: "openstreetmap",
   name: "OpenStreetMap",
@@ -203,14 +237,17 @@ export const openStreetMap: SourceAdapter = {
       const location = [city, state].filter(Boolean).join(", ");
       const category =
         tags.office ?? tags.craft ?? tags.shop ?? tags.amenity ?? tags.healthcare ?? "business";
-      const readable = category.replace(/_/g, " ");
+      const label = describeCategory(category);
+      // Mid-sentence the label needs to be lower case, except where it is an
+      // initialism: "an IT services firm", not "an it services firm".
+      const readable = /^[A-Z]{2,}/.test(label) ? label : label.toLowerCase();
 
       jobs.push({
         id: `openstreetmap:${element.type}/${element.id}`,
         sourceId: "openstreetmap",
         sourceName: "OpenStreetMap",
         externalId: `${element.type}/${element.id}`,
-        title: readable.replace(/^\w/, (c) => c.toUpperCase()),
+        title: label,
         companyName: name,
         location: location || state || "Not stated",
         remote: false,
