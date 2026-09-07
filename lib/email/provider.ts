@@ -95,6 +95,26 @@ export function emailProviderStatus(): EmailProviderStatus {
   return { configured: false, provider: null, from: from || undefined, missing };
 }
 
+/**
+ * Names the credentials a rejected login actually used.
+ *
+ * A 535 says only "wrong", never "wrong which" — and the usual causes are
+ * invisible from the outside: the account is not the one you think, or the
+ * password belongs to an older App Password. Enough of each is shown to compare
+ * against the account without putting a working secret on screen: the address in
+ * full, and the password's length with its first and last two characters, which
+ * identifies it without being usable.
+ */
+function describeCredentials(settings: { user: string; password: string }): string {
+  const { user, password } = settings;
+  const fingerprint =
+    password.length <= 4
+      ? `${password.length} characters`
+      : `${password.length} characters, ${password.slice(0, 2)}…${password.slice(-2)}`;
+
+  return `${user} with a password of ${fingerprint}`;
+}
+
 /** Plain text to minimal HTML: outreach is prose, not a newsletter. */
 function toHtml(body: string): string {
   const escaped = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -134,8 +154,9 @@ async function sendViaSmtp(message: EmailMessage, from: string): Promise<SendRes
     if (/invalid login|username and password not accepted|535/i.test(detail)) {
       return {
         ok: false,
-        error:
-          "The mail server rejected the password this environment is using. For Gmail it must be a 16-character App Password with two-step verification on. If sending works locally, the copy in your hosting environment is stale — update SMTP_PASSWORD there and redeploy.",
+        error: `The mail server rejected the credentials this deployment is using: ${describeCredentials(
+          settings,
+        )}. Compare that against the App Password on the account and update SMTP_USER / SMTP_PASSWORD where this is running, then redeploy — a changed variable does not reach a build that already exists.`,
       };
     }
     if (/timeout|ETIMEDOUT|ECONNREFUSED/i.test(detail)) {
