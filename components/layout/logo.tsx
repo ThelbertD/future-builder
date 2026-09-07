@@ -8,12 +8,12 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-[5px] bg-primary text-primary-foreground",
+        "flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-primary text-primary-foreground",
         className,
       )}
       aria-hidden
     >
-      <svg viewBox="0 0 16 16" fill="none" className="size-3.5">
+      <svg viewBox="0 0 16 16" fill="none" className="size-[18px]">
         <path
           d="M4 12.5v-9l8 9v-9"
           stroke="currentColor"
@@ -33,9 +33,9 @@ export function Wordmark({ className, compact = false }: { className?: string; c
       {compact ? null : (
         // Read from BRAND rather than repeated here, so the name lives in one
         // place and a rename cannot leave the sidebar behind.
-        <span className="flex flex-col leading-none">
-          <span className="text-[13px] font-semibold tracking-tight">{BRAND.name}</span>
-          <span className="mt-0.5 text-[10px] tracking-wide text-muted-foreground uppercase">
+        <span className="flex min-w-0 flex-col leading-none">
+          <span className="truncate text-[16px] font-semibold tracking-tight">{BRAND.name}</span>
+          <span className="mt-1 truncate text-[11px] tracking-wide text-muted-foreground uppercase">
             {BRAND.subtitle}
           </span>
         </span>

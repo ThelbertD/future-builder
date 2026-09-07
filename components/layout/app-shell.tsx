@@ -29,7 +29,13 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-svh">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[228px] border-r border-sidebar-border lg:block">
+      {/*
+        The rail is fixed, so its width and the content's left padding below are
+        one measurement written twice and have to move together. 264px is what
+        the wordmark needs at its current size without the tagline truncating,
+        and it matches the mobile sheet.
+      */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] border-r border-sidebar-border lg:block">
         <Sidebar />
       </aside>
 
@@ -40,7 +46,7 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-h-svh flex-col lg:pl-[228px]">
+      <div className="flex min-h-svh flex-col lg:pl-[264px]">
         <Topbar />
         <main className="flex-1 pb-14 lg:pb-0">{children}</main>
       </div>
