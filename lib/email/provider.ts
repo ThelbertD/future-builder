@@ -44,16 +44,25 @@ const FROM_PATTERN = /^[^@\s]+@[^@\s.]+\.[^@\s]+$|^.+<[^@\s]+@[^@\s.]+\.[^@\s]+>
 /**
  * Reads a credential the way a hosting dashboard tends to store it.
  *
- * Pasting a value into Vercel or an .env file often carries surrounding quotes
- * or a stray newline, and the mail server then rejects the login with a 535
- * indistinguishable from a wrong password. Stripping them costs nothing: no
- * real credential here begins and ends with a quote.
+ * Three things routinely survive a copy and paste into an environment variable,
+ * and all three produce a 535 that looks exactly like a wrong password:
+ *
+ *  - the variable's own name, when a whole `KEY=value` line goes into the value
+ *    box rather than just the value
+ *  - surrounding quotes
+ *  - leading or trailing whitespace
+ *
+ * None of them can appear in a legitimate value here, so all three come off. A
+ * credential that silently means something other than what the dashboard
+ * appears to say is worse than one that is merely absent.
  */
 function credential(name: string): string | undefined {
   const raw = process.env[name];
   if (!raw) return undefined;
 
-  const unquoted = raw.trim().replace(/^"([^]*)"$/, "$1").replace(/^'([^]*)'$/, "$1");
+  const withoutKey = raw.trim().replace(new RegExp(`^${name}\\s*=\\s*`), "");
+  const unquoted = withoutKey.replace(/^"([^]*)"$/, "$1").replace(/^'([^]*)'$/, "$1");
+
   return unquoted.trim() || undefined;
 }
 
