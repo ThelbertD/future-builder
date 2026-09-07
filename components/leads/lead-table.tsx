@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, MessageSquarePlus, MoreHorizontal, MoveRight, Sparkles } from "lucide-react";
+import { ArrowUpDown, MessageSquarePlus, MoreHorizontal, MoveRight, Sparkles, Trash2 } from "lucide-react";
 
 import { IntentBadge, ScoreMeter, StatusBadge } from "@/components/common/indicators";
 import { Button } from "@/components/ui/button";
@@ -201,8 +201,9 @@ function RowActions({
           Move stage
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => onAction?.("archive", lead)} variant="destructive">
-          Archive lead
+        <DropdownMenuItem onSelect={() => onAction?.("delete", lead)} variant="destructive">
+          <Trash2 />
+          Delete lead
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

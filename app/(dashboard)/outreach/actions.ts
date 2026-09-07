@@ -119,3 +119,38 @@ export async function setCampaignStatusAction(input: {
   revalidatePath("/outreach");
   return { ok: true, id: input.campaignId };
 }
+
+/**
+ * Deletes a campaign and its sequence.
+ *
+ * The steps go with it through their cascade. Enrolments do too, so a campaign
+ * that has already sent is deleted with its history — which is why the caller
+ * confirms, and why the count of what was sent is worth showing first.
+ */
+export async function deleteCampaignAction(input: { campaignId: string }): Promise<CampaignActionResult> {
+  if (useMockData) return { ok: false, error: "Connect Supabase to delete campaigns." };
+
+  const [supabase, workspaceId] = await Promise.all([createClient(), getActiveWorkspaceId()]);
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account." };
+
+  const { data, error } = await supabase
+    .from("campaigns")
+    .delete()
+    .eq("id", input.campaignId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .returns<Array<{ id: string }>>();
+
+  if (error) return { ok: false, error: "That campaign could not be deleted." };
+
+  // Deleting is admin-only under RLS, and removes no rows for anyone else.
+  if ((data?.length ?? 0) === 0) {
+    return {
+      ok: false,
+      error: "Nothing was deleted. Deleting a campaign needs an owner or admin role on this workspace.",
+    };
+  }
+
+  revalidatePath("/outreach");
+  return { ok: true, id: input.campaignId };
+}

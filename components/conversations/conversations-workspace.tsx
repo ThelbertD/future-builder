@@ -239,20 +239,27 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
                   </Link>
                 </p>
               ) : null}
-              <div className="relative">
+              {/*
+                The controls sit below the textarea rather than floating over
+                it. Overlaying them meant any message taller than the box
+                scrolled underneath the buttons and became unreadable exactly
+                when it mattered most: while reviewing a draft before sending.
+              */}
+              <div className="space-y-2">
                 <Textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                       event.preventDefault();
-                      send();
+                      if (draftMessage) void sendDraft();
+                      else send();
                     }
                   }}
                   placeholder="Type a message…  (⌘ + Enter to send)"
-                  className="min-h-[84px] pr-2 pb-10"
+                  className="max-h-64 min-h-[96px]"
                 />
-                <div className="absolute inset-x-2 bottom-2 flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Button variant="ghost" size="sm" onClick={draftWithAI} loading={drafting}>
                     <Sparkles />
                     Draft with AI

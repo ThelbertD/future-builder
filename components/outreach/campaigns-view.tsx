@@ -2,11 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Pause, Play, Plus, Send, Sparkles, Target } from "lucide-react";
+import { Mail, Pause, Play, Plus, Send, Sparkles, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { createCampaignAction, setCampaignStatusAction } from "@/app/(dashboard)/outreach/actions";
+import {
+  createCampaignAction,
+  deleteCampaignAction,
+  setCampaignStatusAction,
+} from "@/app/(dashboard)/outreach/actions";
 import { AIBadge } from "@/components/ai/ai-badge";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,8 +48,31 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const [activeId, setActiveId] = React.useState(campaigns[0]?.id ?? "");
   const [creating, setCreating] = React.useState(false);
+  const [pendingDelete, setPendingDelete] = React.useState<Campaign | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const active = campaigns.find((campaign) => campaign.id === activeId) ?? campaigns[0];
+
+  const confirmDelete = async () => {
+    if (deleting || !pendingDelete) return;
+
+    const { id, name } = pendingDelete;
+    setDeleting(true);
+    const result = await deleteCampaignAction({ campaignId: id });
+    setDeleting(false);
+
+    if (!result.ok) {
+      toast.error("Not deleted", { description: result.error });
+      return;
+    }
+
+    setPendingDelete(null);
+    // The deleted campaign may be the selected one, so fall back to whichever
+    // still exists rather than leaving the panel pointing at nothing.
+    setActiveId(campaigns.find((campaign) => campaign.id !== id)?.id ?? "");
+    toast.success("Campaign deleted", { description: `${name} and its sequence were removed.` });
+    router.refresh();
+  };
 
   const toggleStatus = async (campaign: Campaign) => {
     const next: CampaignStatus = campaign.status === "active" ? "paused" : "active";
@@ -137,6 +165,15 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
                 </Button>
                 <Button variant="outline" size="sm">
                   Edit sequence
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setPendingDelete(active)}
+                >
+                  <Trash2 />
+                  Delete
                 </Button>
               </div>
             </div>
@@ -234,6 +271,24 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
       ) : null}
 
       <NewCampaignDialog open={creating} onOpenChange={setCreating} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.name ?? "this campaign"}?`}
+        description={
+          pendingDelete && pendingDelete.stats.sent > 0
+            ? `This cannot be undone. The sequence and the record of ${formatNumber(
+                pendingDelete.stats.sent,
+              )} sent messages go with it. Leads and their conversations are untouched.`
+            : "This cannot be undone. The sequence goes with it. Leads and their conversations are untouched."
+        }
+        confirmLabel={deleting ? "Deleting…" : "Delete campaign"}
+        destructive
+        loading={deleting}
+        closeOnConfirm={false}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

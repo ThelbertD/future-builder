@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, Download, KanbanSquare, Plus, Radar, Sparkles, X } from "lucide-react";
+import { AtSign, Download, KanbanSquare, Plus, Radar, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateOutreachAction } from "@/app/(dashboard)/leads/actions";
+import { deleteLeadsAction, generateOutreachAction } from "@/app/(dashboard)/leads/actions";
 import { discoverContactsAction } from "@/app/(dashboard)/leads/enrich-actions";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { EmptyState } from "@/components/common/empty-state";
 import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import { OutreachDraftDialog, type OutreachDraft } from "@/components/leads/outreach-draft-dialog";
@@ -52,6 +53,9 @@ export function LeadsExplorer({
   const [drafting, setDrafting] = React.useState(false);
   const [enriching, setEnriching] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
+  /** Leads awaiting confirmation. Empty means no delete is pending. */
+  const [pendingDelete, setPendingDelete] = React.useState<LeadWithRelations[]>([]);
+  const [deleting, setDeleting] = React.useState(false);
 
   const visible = React.useMemo(() => sortLeads(applyLeadFilters(leads, filters), sort), [leads, filters, sort]);
 
@@ -116,6 +120,37 @@ export function LeadsExplorer({
     router.refresh();
   };
 
+  /**
+   * Deletes what the confirmation dialog is holding.
+   *
+   * The selection is cleared regardless of the outcome: whatever survived a
+   * partial failure is no longer what the user chose, and acting on a stale
+   * selection is how the wrong lead gets deleted next.
+   */
+  const confirmDelete = async () => {
+    if (deleting || pendingDelete.length === 0) return;
+
+    const count = pendingDelete.length;
+    setDeleting(true);
+    const result = await deleteLeadsAction({ leadIds: pendingDelete.map((lead) => lead.id) });
+    setDeleting(false);
+
+    if (!result.ok) {
+      toast.error("Nothing was deleted", { description: result.error });
+      return;
+    }
+
+    setPendingDelete([]);
+    setSelected([]);
+    toast.success(`${pluralize(result.deleted, "lead")} deleted`, {
+      description:
+        result.deleted < count
+          ? `${count - result.deleted} could not be removed and are still listed.`
+          : "Their conversations, drafts and scoring went with them.",
+    });
+    router.refresh();
+  };
+
   const handleAction = async (action: string, lead: LeadWithRelations) => {
     switch (action) {
       case "outreach": {
@@ -143,8 +178,11 @@ export function LeadsExplorer({
       case "pipeline":
         router.push("/pipeline");
         break;
+      case "delete":
+        setPendingDelete([lead]);
+        break;
       default:
-        toast("Lead archived", { description: `${lead.company.name} was moved out of the active list.` });
+        break;
     }
   };
 
@@ -160,6 +198,16 @@ export function LeadsExplorer({
       {visibleSelected.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/25 bg-primary/[0.06] px-3 py-2">
           <span className="text-[13px] font-medium">{pluralize(visibleSelected.length, "lead")} selected</span>
+          {visibleSelected.length < visible.length ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-auto px-1 py-0 text-[12px]"
+              onClick={() => setSelected(visible.map((lead) => lead.id))}
+            >
+              Select all {visible.length}
+            </Button>
+          ) : null}
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <Button
               size="sm"
@@ -188,6 +236,15 @@ export function LeadsExplorer({
             >
               <Download />
               Export
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setPendingDelete(visible.filter((lead) => visibleSelected.includes(lead.id)))}
+            >
+              <Trash2 />
+              Delete
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected([])} aria-label="Clear selection">
               <X />
@@ -228,6 +285,26 @@ export function LeadsExplorer({
       <CreateLeadDialog open={creating} stages={stages} onOpenChange={setCreating} />
 
       <OutreachDraftDialog draft={draft} onOpenChange={(open) => !open && setDraft(null)} />
+
+      <ConfirmDialog
+        open={pendingDelete.length > 0}
+        onOpenChange={(open) => !open && setPendingDelete([])}
+        title={
+          pendingDelete.length === 1
+            ? `Delete ${pendingDelete[0].company.name}?`
+            : `Delete ${pluralize(pendingDelete.length, "lead")}?`
+        }
+        description={`This cannot be undone. ${
+          pendingDelete.length === 1 ? "The lead's" : "Their"
+        } conversations, drafts and scoring are deleted too. The ${
+          pendingDelete.length === 1 ? "company and contact stay" : "companies and contacts stay"
+        } in your workspace.`}
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        destructive
+        loading={deleting}
+        closeOnConfirm={false}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

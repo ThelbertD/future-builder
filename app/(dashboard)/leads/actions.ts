@@ -124,3 +124,62 @@ export async function generateOutreachAction(
 
   return { ok: true, conversationId, ...draft };
 }
+
+export interface DeleteLeadsResult {
+  ok: boolean;
+  error?: string;
+  deleted: number;
+}
+
+const deleteSchema = z.object({
+  leadIds: z.array(z.string().min(1).max(64)).min(1).max(500),
+});
+
+/**
+ * Deletes leads permanently.
+ *
+ * Everything hanging off a lead — its conversation, messages, analysis and
+ * activity — is removed with it by the cascades on those foreign keys, so this
+ * leaves nothing orphaned. The company and contact stay: they are shared with
+ * other leads, and deleting one opportunity is not a reason to forget the firm.
+ *
+ * Nothing here is recoverable, so the caller confirms first.
+ */
+export async function deleteLeadsAction(input: z.input<typeof deleteSchema>): Promise<DeleteLeadsResult> {
+  const parsed = deleteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nothing was selected to delete.", deleted: 0 };
+
+  if (useMockData) {
+    return { ok: false, error: "Connect Supabase to delete leads.", deleted: 0 };
+  }
+
+  const [supabase, workspaceId] = await Promise.all([createClient(), getActiveWorkspaceId()]);
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", deleted: 0 };
+
+  const { data, error } = await supabase
+    .from("leads")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .in("id", parsed.data.leadIds)
+    .select("id")
+    .returns<Array<{ id: string }>>();
+
+  if (error) return { ok: false, error: "Those leads could not be deleted.", deleted: 0 };
+
+  // Deleting is admin-only under RLS, and a member's delete removes no rows
+  // rather than failing. Saying "done" to that would be a lie.
+  if ((data?.length ?? 0) === 0) {
+    return {
+      ok: false,
+      error: "Nothing was deleted. Deleting leads needs an owner or admin role on this workspace.",
+      deleted: 0,
+    };
+  }
+
+  revalidatePath("/leads");
+  revalidatePath("/pipeline");
+  revalidatePath("/conversations");
+  revalidatePath("/dashboard");
+
+  return { ok: true, deleted: data?.length ?? 0 };
+}
