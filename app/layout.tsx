@@ -5,6 +5,7 @@ import { GeistSans } from "geist/font/sans";
 import { ThemeProvider } from "@/components/common/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { BRAND } from "@/lib/constants";
+import { resolveSiteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   },
   description: BRAND.tagline,
   applicationName: BRAND.product,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: resolveSiteUrl(),
   openGraph: {
     title: `${BRAND.product} — ${BRAND.subtitle}`,
     description: BRAND.tagline,

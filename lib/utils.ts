@@ -169,6 +169,12 @@ export function sanitizeUrl(value?: string | null): string | undefined {
 
   candidate = candidate.replace(/^["']|["']$/g, "").trim();
 
+  // A bare host is what a hosting dashboard hands you — Vercel's own URL
+  // variables carry no scheme — and what people paste when copying an address
+  // out of the browser bar. Requiring a dot and no whitespace stops this
+  // promoting arbitrary prose into a URL.
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(candidate)) candidate = `https://${candidate}`;
+
   if (!/^https?:\/\/\S+$/i.test(candidate)) return undefined;
   return candidate;
 }
