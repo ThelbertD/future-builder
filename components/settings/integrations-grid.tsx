@@ -144,9 +144,9 @@ const SETUP_STEPS: Record<string, { vars: string[]; help: string }> = {
     help: "Project dashboard → Settings → API Keys.",
   },
   openai: { vars: ["OPENAI_API_KEY"], help: "platform.openai.com → API keys." },
-  consulti: {
-    vars: ["CONSULTI_API_KEY"],
-    help: "app.consulti.ai → Settings → Integrations → generate key. Keys start with capi_. Once set, the Lead Finder searches the B2B and Google Maps databases alongside the free job feeds, and those results carry a contact address.",
+  openstreetmap: {
+    vars: [],
+    help: "Nothing to configure: this reads the public Overpass API, which needs no account or key. In the Lead Finder, pick an industry and enter a region (FL, CA, TX and so on) to search businesses in it. Data is ODbL-licensed and contributed by OpenStreetMap volunteers.",
   },
   anthropic: { vars: ["ANTHROPIC_API_KEY"], help: "console.anthropic.com → API keys." },
   "email-provider": {
@@ -170,13 +170,15 @@ function SetupDialog({
         <DialogHeader>
           <DialogTitle>{integration?.name}</DialogTitle>
           <DialogDescription>
-            Credentials are read from server-side environment variables. They are never stored in the database,
-            where any workspace member could read them.
+            {steps && steps.vars.length === 0
+              ? "This source is free and open, so there is nothing to connect."
+              : "Credentials are read from server-side environment variables. They are never stored in the database, where any workspace member could read them."}
           </DialogDescription>
         </DialogHeader>
 
         {steps ? (
           <div className="space-y-3">
+            {steps.vars.length > 0 ? (
             <div>
               <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 Environment variables
@@ -189,11 +191,14 @@ function SetupDialog({
                 ))}
               </ul>
             </div>
+            ) : null}
             <p className="text-[12px] leading-relaxed text-muted-foreground">{steps.help}</p>
-            <p className="text-[12px] leading-relaxed text-muted-foreground">
-              Add them to <code className="font-mono text-[11px]">.env.local</code> for development, and to your
-              hosting environment for production. A new build is required before they take effect.
-            </p>
+            {steps.vars.length > 0 ? (
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                Add them to <code className="font-mono text-[11px]">.env.local</code> for development, and to your
+                hosting environment for production. A new build is required before they take effect.
+              </p>
+            ) : null}
           </div>
         ) : (
           <p className="text-[13px] text-muted-foreground">This integration is not available yet.</p>

@@ -23,6 +23,7 @@ import { DiscoveryTable } from "@/components/leads/discovery-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,6 +41,7 @@ import type { SavedSearch } from "@/types";
 interface SearchState {
   keywords: string[];
   location: string;
+  region: string;
   industry: string;
   service: string;
   posted: string;
@@ -50,6 +52,7 @@ interface SearchState {
 const INITIAL_STATE: SearchState = {
   keywords: ["Automation", "GoHighLevel", "CRM"],
   location: "United States",
+  region: "",
   industry: "all",
   service: "all",
   posted: "30d",
@@ -90,6 +93,7 @@ export function FinderWorkspace({ savedSearches }: { savedSearches: SavedSearch[
     const response = await searchLeadsAction({
       keywords: query.keywords,
       location: query.location,
+      region: query.region || undefined,
       industry: query.industry === "all" ? undefined : query.industry,
       service: query.service === "all" ? undefined : query.service,
       postedWithinDays: DAYS_BY_RANGE[query.posted] ?? 30,
@@ -213,6 +217,19 @@ export function FinderWorkspace({ savedSearches }: { savedSearches: SavedSearch[
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="finder-region">Region</Label>
+              <Input
+                id="finder-region"
+                value={state.region}
+                onChange={(event) => set("region", event.target.value)}
+                placeholder="FL, CA, TX…"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Needed to search local businesses.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -416,6 +433,7 @@ export function FinderWorkspace({ savedSearches }: { savedSearches: SavedSearch[
                         ...state,
                         keywords: [...search.keywords],
                         location: search.location || state.location,
+                        region: state.region,
                         industry: search.industry || "all",
                         minScore: String(search.minScore),
                       };

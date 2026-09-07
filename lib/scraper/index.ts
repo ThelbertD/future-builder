@@ -1,8 +1,8 @@
 import { scoreJob, type ScoredJob } from "@/lib/scraper/scoring";
 import { arbeitnow } from "@/lib/scraper/sources/arbeitnow";
-import { consultiB2B, consultiLocal } from "@/lib/scraper/sources/consulti";
 import { hackerNews } from "@/lib/scraper/sources/hacker-news";
 import { jobicy } from "@/lib/scraper/sources/jobicy";
+import { openStreetMap } from "@/lib/scraper/sources/openstreetmap";
 import { remoteok } from "@/lib/scraper/sources/remoteok";
 import { remotive } from "@/lib/scraper/sources/remotive";
 import { theMuse } from "@/lib/scraper/sources/the-muse";
@@ -18,10 +18,11 @@ import type { ScrapedJob, SearchQuery, SourceAdapter, SourceOutcome } from "@/li
  * provider later is a single new file implementing SourceAdapter.
  */
 export const SOURCES: SourceAdapter[] = [
-  // Licensed databases first: they carry contacts, which is what makes a
-  // result actionable rather than merely interesting.
-  consultiB2B,
-  consultiLocal,
+  // The business database first: it carries contact details, which is what
+  // makes a result actionable rather than merely interesting, and it is the
+  // only source that finds companies by what they are rather than by what they
+  // are hiring for.
+  openStreetMap,
   remotive,
   remoteok,
   arbeitnow,
@@ -122,7 +123,10 @@ export async function runLeadSearch(query: SearchQuery): Promise<LeadSearchResul
 
   const settled = await Promise.allSettled(
     sources.map(async (source) => {
-      const jobs = await source.fetchJobs(query, AbortSignal.timeout(SOURCE_TIMEOUT_MS));
+      const jobs = await source.fetchJobs(
+        query,
+        AbortSignal.timeout(source.timeoutMs ?? SOURCE_TIMEOUT_MS),
+      );
       return { source, jobs };
     }),
   );

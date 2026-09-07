@@ -6,6 +6,8 @@ export interface SearchQuery {
   location: string;
   industry?: string;
   service?: string;
+  /** State, province or place name. Required for local search in large countries. */
+  region?: string;
   /** Only keep postings published within this many days. */
   postedWithinDays: number;
   minScore: number;
@@ -67,6 +69,8 @@ export interface SourceAdapter {
   homepage: string;
   /** Skipped entirely when this returns false, e.g. a missing API key. */
   isAvailable?: () => boolean;
+  /** Overrides the shared per-source timeout for slower providers. */
+  timeoutMs?: number;
   fetchJobs(query: SearchQuery, signal: AbortSignal): Promise<ScrapedJob[]>;
 }
 

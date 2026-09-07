@@ -464,10 +464,13 @@ function resolveStatus(integration: Integration): Integration {
         ? { ...integration, status: "connected" }
         : { ...integration, note: "Set ANTHROPIC_API_KEY on the server." };
 
-    case "consulti":
-      return process.env.CONSULTI_API_KEY
-        ? { ...integration, status: "connected", note: "B2B and local search enabled in the Lead Finder" }
-        : { ...integration, note: "Set CONSULTI_API_KEY on the server." };
+    // Open data over a public API: nothing to configure, so it is always on.
+    case "openstreetmap":
+      return {
+        ...integration,
+        status: "connected",
+        note: "Local business search enabled in the Lead Finder. Add a region to use it.",
+      };
 
     case "email-provider": {
       const email = emailProviderStatus();

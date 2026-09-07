@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 const querySchema = z.object({
   keywords: z.array(z.string().trim().min(1).max(60)).max(12),
   location: z.string().trim().max(60),
+  region: z.string().trim().max(60).optional(),
   industry: z.string().trim().max(60).optional(),
   service: z.string().trim().max(60).optional(),
   postedWithinDays: z.number().int().min(1).max(365),

@@ -47,14 +47,14 @@ export const INTEGRATIONS: Integration[] = [
     docsUrl: "https://resend.com/docs",
   },
   {
-    id: "consulti",
-    name: "Consulti",
+    id: "openstreetmap",
+    name: "OpenStreetMap",
     category: "Data",
     description:
-      "Licensed B2B and Google Maps databases. The only source that returns a verified contact address with the lead.",
+      "Free business database covering agencies, trades, clinics and brokerages, with the email, phone and website each owner published.",
     status: "available",
     icon: "Database",
-    docsUrl: "https://app.consulti.ai",
+    docsUrl: "https://wiki.openstreetmap.org/wiki/Overpass_API",
   },
   {
     id: "google-calendar",
