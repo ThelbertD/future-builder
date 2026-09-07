@@ -79,7 +79,7 @@ export const CONVERSATIONS: Conversation[] = CONTACTED_LEADS.map((lead, index) =
 
   push(
     "ai",
-    "Future Builder AI",
+    "NexusOS",
     OUTREACH_TEMPLATES[index % OUTREACH_TEMPLATES.length](lead.company.name, role, service),
     baseHours,
     "gpt-4.1",
@@ -90,7 +90,7 @@ export const CONVERSATIONS: Conversation[] = CONTACTED_LEADS.map((lead, index) =
     push("prospect", contactName, REPLY_TEMPLATES[index % REPLY_TEMPLATES.length], baseHours - 9);
     push(
       "ai",
-      "Future Builder AI",
+      "NexusOS",
       AI_FOLLOWUP_TEMPLATES[index % AI_FOLLOWUP_TEMPLATES.length],
       baseHours - 8,
       "gpt-4.1",

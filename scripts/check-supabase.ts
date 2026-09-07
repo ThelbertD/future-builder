@@ -43,7 +43,7 @@ function mask(value: string): string {
 }
 
 async function main() {
-  console.log("Future Builder AI — Supabase check\n");
+  console.log("NexusOS — Supabase check\n");
 
   if (!url || !anonKey) {
     console.error("✗ NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY missing from .env.local");

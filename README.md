@@ -1,4 +1,4 @@
-# Future Builder AI
+# NexusOS
 
 **AI Client Acquisition OS** — find companies that are already hiring for what you sell, qualify them with AI, work them in a custom pipeline, hold the conversation, and book the call.
 

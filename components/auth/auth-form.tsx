@@ -22,7 +22,7 @@ const COPY: Record<
     title: "Sign in",
     description: "Welcome back. Pick up where your pipeline left off.",
     submit: "Sign in",
-    alt: "New to Future Builder?",
+    alt: "New to NexusOS?",
     altHref: "/signup",
     altLabel: "Create an account",
   },

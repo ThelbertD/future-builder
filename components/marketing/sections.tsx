@@ -182,7 +182,7 @@ export function Testimonials() {
     <SectionShell
       eyebrow="Testimonials"
       title="Teams that fill their own pipeline."
-      description="Agencies, contractors and consultancies using Future Builder to find work that is already funded."
+      description="Agencies, contractors and consultancies using NexusOS to find work that is already funded."
     >
       <div className="grid gap-4 md:grid-cols-3">
         {TESTIMONIALS.map((testimonial) => (

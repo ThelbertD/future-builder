@@ -186,7 +186,7 @@ export const openStreetMap: SourceAdapter = {
           // both have to be set explicitly.
           headers: {
             "content-type": "application/x-www-form-urlencoded",
-            "user-agent": "FutureBuilderAI/1.0 (+https://github.com/futurebuilder)",
+            "user-agent": "NexusOS/1.0 (+https://future-builder-eta.vercel.app)",
           },
         });
         if (!response.ok) {

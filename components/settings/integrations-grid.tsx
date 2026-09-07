@@ -151,7 +151,7 @@ const SETUP_STEPS: Record<string, { vars: string[]; help: string }> = {
   anthropic: { vars: ["ANTHROPIC_API_KEY"], help: "console.anthropic.com → API keys." },
   "email-provider": {
     vars: ["RESEND_API_KEY", "EMAIL_FROM"],
-    help: "resend.com → API keys. Verify your sending domain first, then set EMAIL_FROM to an address on it, for example \"Thelbert <hello@futurebuilder.ai>\".",
+    help: "resend.com → API keys. Verify your sending domain first, then set EMAIL_FROM to an address on it, for example \"Thelbert <hello@nexusos.ai>\".",
   },
 };
 

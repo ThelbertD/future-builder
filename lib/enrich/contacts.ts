@@ -71,7 +71,7 @@ async function fetchText(url: string, signal: AbortSignal): Promise<string | nul
       cache: "no-store",
       redirect: "follow",
       headers: {
-        "user-agent": "Mozilla/5.0 (compatible; FutureBuilderAI/1.0)",
+        "user-agent": "Mozilla/5.0 (compatible; NexusOS/1.0)",
         accept: "text/html",
       },
     });

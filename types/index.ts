@@ -1,5 +1,5 @@
 /**
- * Future Builder AI — domain model.
+ * NexusOS — domain model.
  *
  * Every tenant-scoped entity carries `workspaceId` so the same types map 1:1 onto
  * Supabase tables protected by row level security (see database/migrations).

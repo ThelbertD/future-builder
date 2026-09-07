@@ -1,8 +1,8 @@
 {
-  "name": "future-builder-ai",
+  "name": "nexusos",
   "version": "0.1.0",
   "private": true,
-  "description": "Future Builder AI - AI Client Acquisition OS",
+  "description": "NexusOS - AI Client Acquisition OS",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

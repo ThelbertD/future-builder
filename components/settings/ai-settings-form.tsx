@@ -65,7 +65,7 @@ export function AISettingsForm({ settings }: { settings: AISettings }) {
   const [model, setModel] = React.useState(settings.model ?? MODELS.openai[0]);
   const [temperature, setTemperature] = React.useState([settings.temperature ?? 0.3]);
   const [systemPrompt, setSystemPrompt] = React.useState(settings.systemPrompt ?? DEFAULT_SYSTEM_PROMPT);
-  const [businessName, setBusinessName] = React.useState(settings.businessName ?? "Future Builder");
+  const [businessName, setBusinessName] = React.useState(settings.businessName ?? "NexusOS");
   const [targetCustomers, setTargetCustomers] = React.useState(
     settings.targetCustomers ?? "Agencies and service businesses with 10-200 staff",
   );
@@ -86,7 +86,7 @@ export function AISettingsForm({ settings }: { settings: AISettings }) {
     setModel(MODELS.openai[0]);
     setTemperature([0.3]);
     setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
-    setBusinessName("Future Builder");
+    setBusinessName("NexusOS");
     setTargetCustomers("Agencies and service businesses with 10-200 staff");
     setServices(["GoHighLevel Automation", "CRM Automation", "AI Automation"]);
     setTone("direct");

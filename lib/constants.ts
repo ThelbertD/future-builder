@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 
 export const BRAND = {
-  name: "Future Builder",
-  product: "Future Builder AI",
+  name: "NexusOS",
+  product: "NexusOS",
   subtitle: "AI Client Acquisition OS",
   tagline: "AI-powered client acquisition for modern service businesses.",
 } as const;

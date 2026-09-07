@@ -90,7 +90,7 @@ export async function generateOutreachAction(
     workspace_id: workspaceId,
     conversation_id: conversationId,
     author: "ai",
-    author_name: "Future Builder AI",
+    author_name: "NexusOS",
     body: draft.body,
     channel: "email",
   };

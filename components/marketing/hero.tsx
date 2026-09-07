@@ -19,7 +19,7 @@ function ProductPreview() {
           <span className="size-2 rounded-full bg-muted-foreground/25" />
         </span>
         <span className="ml-2 rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
-          app.futurebuilder.ai/dashboard
+          app.nexusos.ai/dashboard
         </span>
         <span className="ml-auto flex items-center gap-1 text-[10px] text-success">
           <span className="size-1.5 rounded-full bg-success" />

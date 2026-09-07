@@ -38,7 +38,7 @@ export const remoteok: SourceAdapter = {
     const response = await fetch("https://remoteok.com/api", {
       signal,
       cache: "no-store",
-      headers: { "user-agent": "FutureBuilderAI/1.0 (+https://future-builder-eta.vercel.app)" },
+      headers: { "user-agent": "NexusOS/1.0 (+https://future-builder-eta.vercel.app)" },
     });
 
     if (!response.ok) throw new Error(`Remote OK responded ${response.status}`);

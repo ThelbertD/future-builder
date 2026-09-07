@@ -1,11 +1,11 @@
 import type { User, Workspace, WorkspaceMember } from "@/types";
 import { daysAgo, sanitizeUrl } from "@/lib/utils";
 
-export const WORKSPACE_ID = "wsp_futurebuilder";
+export const WORKSPACE_ID = "wsp_nexusos";
 
 export const CURRENT_USER: User = {
   id: "usr_thelbert",
-  email: "thelbert@futurebuilder.ai",
+  email: "thelbert@nexusos.ai",
   fullName: "Thelbert Delos Reyes",
   jobTitle: "Founder",
   timezone: "America/New_York",
@@ -15,8 +15,8 @@ export const CURRENT_USER: User = {
 
 export const CURRENT_WORKSPACE: Workspace = {
   id: WORKSPACE_ID,
-  name: "Future Builder",
-  slug: "future-builder",
+  name: "NexusOS",
+  slug: "nexusos",
   plan: "growth",
   bookingUrl: sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
   aiSettings: {},
@@ -48,7 +48,7 @@ export const WORKSPACE_MEMBERS: WorkspaceMember[] = [
     user: {
       id: "usr_marisol",
       fullName: "Marisol Vega",
-      email: "marisol@futurebuilder.ai",
+      email: "marisol@nexusos.ai",
       jobTitle: "Head of Delivery",
     },
   },
@@ -62,7 +62,7 @@ export const WORKSPACE_MEMBERS: WorkspaceMember[] = [
     user: {
       id: "usr_dev",
       fullName: "Devon Ashcroft",
-      email: "devon@futurebuilder.ai",
+      email: "devon@nexusos.ai",
       jobTitle: "Automation Engineer",
     },
   },
@@ -76,7 +76,7 @@ export const WORKSPACE_MEMBERS: WorkspaceMember[] = [
     user: {
       id: "usr_priya",
       fullName: "Priya Raghunathan",
-      email: "priya@futurebuilder.ai",
+      email: "priya@nexusos.ai",
       jobTitle: "Appointment Setter",
     },
   },
