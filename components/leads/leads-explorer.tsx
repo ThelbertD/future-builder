@@ -19,6 +19,8 @@ import {
 } from "@/components/leads/filter-bar";
 import { LeadTable, type LeadSortKey } from "@/components/leads/lead-table";
 import { Button } from "@/components/ui/button";
+import { downloadCsv, toCsv } from "@/lib/csv";
+import { LEAD_CSV_COLUMNS, LEAD_CSV_HEADERS } from "@/lib/leads/csv-columns";
 import { pluralize } from "@/lib/utils";
 import type { LeadWithRelations, PipelineStage } from "@/types";
 
@@ -118,6 +120,20 @@ export function LeadsExplorer({
       description: "Open Conversations to review each one before sending.",
     });
     router.refresh();
+  };
+
+  /** Writes only what is selected, using the same columns as a full export. */
+  const exportSelected = () => {
+    const chosen = visible.filter((lead) => visibleSelected.includes(lead.id));
+    if (chosen.length === 0) return;
+
+    const rows = chosen.map((lead) => LEAD_CSV_COLUMNS.map((column) => column.read(lead)));
+    const stamp = new Date().toISOString().slice(0, 10);
+
+    downloadCsv(`nexusos-leads-${stamp}.csv`, toCsv(LEAD_CSV_HEADERS, rows));
+    toast.success(`${pluralize(chosen.length, "lead")} exported`, {
+      description: "Edit it in a spreadsheet and import it back when you are done.",
+    });
   };
 
   /**
@@ -229,11 +245,7 @@ export function LeadsExplorer({
               <Sparkles />
               Generate outreach
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => toast("Export started", { description: "Your CSV will download shortly." })}
-            >
+            <Button size="sm" variant="outline" onClick={exportSelected}>
               <Download />
               Export
             </Button>

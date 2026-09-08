@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download, Radar } from "lucide-react";
+import { Radar } from "lucide-react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { LeadsExplorer } from "@/components/leads/leads-explorer";
+import { LeadsIO } from "@/components/leads/leads-io";
 import { Button } from "@/components/ui/button";
 import { fetchLeads, fetchPipelineStages } from "@/lib/supabase/queries";
 import { formatNumber } from "@/lib/utils";
@@ -26,10 +27,7 @@ export default async function LeadsPage() {
         }
         actions={
           <>
-            <Button variant="outline" size="sm">
-              <Download />
-              Export
-            </Button>
+            <LeadsIO leads={leads} />
             <Button asChild size="sm">
               <Link href="/finder">
                 <Radar />
