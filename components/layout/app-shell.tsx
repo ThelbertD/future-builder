@@ -5,6 +5,7 @@ import * as React from "react";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { ReplyWatcher } from "@/components/layout/reply-watcher";
 import { ShellDataProvider, type ShellData } from "@/components/layout/shell-data";
 import { ShellProvider, useShell } from "@/components/layout/shell-context";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -53,6 +54,7 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
 
       <MobileNav />
       <CommandMenu />
+      <ReplyWatcher />
       <AIAssistantPanel />
     </div>
   );

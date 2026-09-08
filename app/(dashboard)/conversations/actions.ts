@@ -331,6 +331,18 @@ export async function syncRepliesAction(): Promise<SyncRepliesResult> {
       company_id: contact.company_id,
     });
 
+    // A reply is the one event worth interrupting someone for, and
+    // prospect_replied was already a notification kind that nothing created.
+    // The link opens the thread it belongs to.
+    await supabase.from("notifications").insert({
+      workspace_id: workspaceId,
+      kind: "prospect_replied",
+      title: `${message.fromName ?? message.fromEmail} replied`,
+      body: message.body.replace(/\n+/g, " ").slice(0, 140),
+      href: `/conversations?c=${conversationId}`,
+      read: false,
+    });
+
     added += 1;
   }
 

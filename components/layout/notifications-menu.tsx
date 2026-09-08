@@ -11,6 +11,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { markNotificationsReadAction } from "@/app/(dashboard)/notification-actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,12 +44,30 @@ export function NotificationsMenu() {
   const router = useRouter();
   const { notifications } = useShellData();
   const [items, setItems] = React.useState(notifications);
+
+  // Adopt what the server sends when a refresh brings something new. Seeding
+  // from context once meant an arriving reply never reached the bell, because
+  // useState ignores every value after the first.
+  const signature = notifications.map((item) => `${item.id}:${item.read}`).join("|");
+  const [lastSignature, setLastSignature] = React.useState(signature);
+
+  if (signature !== lastSignature) {
+    setLastSignature(signature);
+    setItems(notifications);
+  }
+
   const unread = items.filter((item) => !item.read).length;
 
-  const markAllRead = () => setItems((current) => current.map((item) => ({ ...item, read: true })));
+  // Update on screen first, then persist. Reading a notification should feel
+  // instant, and the write is not something to wait on.
+  const markAllRead = () => {
+    setItems((current) => current.map((item) => ({ ...item, read: true })));
+    void markNotificationsReadAction();
+  };
 
   const open = (id: string, href: string) => {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    void markNotificationsReadAction({ ids: [id] });
     router.push(href);
   };
 
