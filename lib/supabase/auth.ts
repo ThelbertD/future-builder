@@ -33,6 +33,7 @@ interface MembershipRow {
     plan: string;
     logo_url: string | null;
     booking_url?: string | null;
+    email_signature?: string | null;
     ai_settings?: AISettings | null;
     created_at: string;
   } | null;
@@ -99,6 +100,7 @@ export const getActiveWorkspace = cache(async (): Promise<Workspace | null> => {
     // Falls back to the environment value until migration 0005 has run.
     bookingUrl:
       sanitizeUrl(workspace.booking_url) ?? sanitizeUrl(process.env.NEXT_PUBLIC_BOOKING_URL),
+    emailSignature: workspace.email_signature ?? undefined,
     aiSettings: workspace.ai_settings ?? {},
     createdAt: workspace.created_at,
   };

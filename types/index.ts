@@ -56,6 +56,8 @@ export interface Workspace {
   logoUrl?: string;
   /** Public scheduling link handed to prospects, e.g. a Calendly URL. */
   bookingUrl?: string;
+  /** Appended to outbound email at send time. */
+  emailSignature?: string;
   aiSettings: AISettings;
   createdAt: ISODate;
 }

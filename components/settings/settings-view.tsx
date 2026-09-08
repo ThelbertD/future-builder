@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -153,6 +154,7 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
 
   const [workspaceName, setWorkspaceName] = React.useState(workspace?.name ?? "");
   const [bookingUrl, setBookingUrl] = React.useState(workspace?.bookingUrl ?? "");
+  const [emailSignature, setEmailSignature] = React.useState(workspace?.emailSignature ?? "");
 
   const [prefs, setPrefs] = React.useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -291,7 +293,7 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
                 onClick={() =>
                   void run(
                     "workspace",
-                    () => updateWorkspaceAction({ name: workspaceName, bookingUrl }),
+                    () => updateWorkspaceAction({ name: workspaceName, bookingUrl, emailSignature }),
                     "Workspace saved",
                   )
                 }
@@ -326,6 +328,25 @@ export function SettingsView({ user, workspace, members, stages }: SettingsViewP
               />
               <p className="text-[11px] text-muted-foreground">
                 Appended to every outreach draft so a prospect can book without a reply.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email-signature">Email signature</Label>
+              <Textarea
+                id="email-signature"
+                value={emailSignature}
+                onChange={(event) => setEmailSignature(event.target.value)}
+                rows={6}
+                placeholder={`Your name
+GoHighLevel Specialist · Automation · Web Development
++63 900 000 0000
+www.yoursite.com`}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Added below every message this app sends, after the standard{" "}
+                <code className="font-mono text-[11px]">--</code> separator. Your Gmail signature is added by
+                Gmail itself and never reaches mail sent from here, which is why this exists.
               </p>
             </div>
 

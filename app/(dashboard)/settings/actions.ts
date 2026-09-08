@@ -58,6 +58,7 @@ export async function updateProfileAction(input: z.input<typeof profileSchema>):
 const workspaceSchema = z.object({
   name: z.string().trim().min(1, "Workspace name is required.").max(80),
   bookingUrl: z.union([z.url("Enter a full URL, including https://"), z.literal("")]).optional(),
+  emailSignature: z.string().trim().max(2000).optional(),
 });
 
 export async function updateWorkspaceAction(
@@ -72,10 +73,21 @@ export async function updateWorkspaceAction(
 
   const { error } = await supabase
     .from("workspaces")
-    .update({ name: parsed.data.name, booking_url: sanitizeUrl(parsed.data.bookingUrl) ?? null })
+    .update({
+      name: parsed.data.name,
+      booking_url: sanitizeUrl(parsed.data.bookingUrl) ?? null,
+      email_signature: parsed.data.emailSignature?.trim() || null,
+    })
     .eq("id", workspaceId);
 
-  if (error) return { ok: false, error: describe(error, "booking_url", "0005") };
+  if (error) {
+    return {
+      ok: false,
+      error: /email_signature/.test(error.message)
+        ? describe(error, "email_signature", "0009")
+        : describe(error, "booking_url", "0005"),
+    };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

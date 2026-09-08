@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { fetchInbound, inboxStatus } from "@/lib/email/inbox";
 import { emailProviderStatus, sendEmail } from "@/lib/email/provider";
-import { getActiveWorkspaceId } from "@/lib/supabase/auth";
+import { getActiveWorkspace, getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -81,10 +81,15 @@ export async function sendDraftAction(input: z.input<typeof inputSchema>): Promi
     return { ok: false, error: `${contact?.full_name ?? "This contact"} has no email address on record.` };
   }
 
+  // Read at send time rather than baked into the draft, so editing the
+  // signature changes what goes out next without touching stored drafts.
+  const workspace = await getActiveWorkspace();
+
   const result = await sendEmail({
     to: contact.email,
     subject: conversation.subject ?? "Following up",
     body: parsed.data.body,
+    signature: workspace?.emailSignature,
   });
 
   if (!result.ok) return { ok: false, error: result.error };

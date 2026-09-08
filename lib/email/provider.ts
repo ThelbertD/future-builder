@@ -22,6 +22,14 @@ export interface EmailMessage {
   subject: string;
   body: string;
   replyTo?: string;
+  /**
+   * Appended below the body, after a standard "-- " separator.
+   *
+   * A Gmail signature is added by the Gmail web client, so nothing sent over
+   * SMTP carries it. Outreach from here went out unsigned while the same
+   * account signed everything sent by hand.
+   */
+  signature?: string;
 }
 
 export interface SendResult {
@@ -228,6 +236,22 @@ async function sendViaResend(message: EmailMessage, from: string): Promise<SendR
   }
 }
 
+/**
+ * "-- " on its own line is the standard signature delimiter.
+ *
+ * Mail clients recognise it and collapse everything below, which is why the
+ * trailing space matters and why the signature is not simply pasted on.
+ */
+function withSignature(body: string, signature?: string): string {
+  const trimmed = signature?.trim();
+  if (!trimmed) return body;
+
+  // Already signed — a draft edited by hand may carry one.
+  if (/\n-- \n/.test(body)) return body;
+
+  return `${body.trimEnd()}\n\n-- \n${trimmed}`;
+}
+
 export async function sendEmail(message: EmailMessage): Promise<SendResult> {
   const status = emailProviderStatus();
 
@@ -235,7 +259,9 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
     return { ok: false, error: `Email is not configured. Missing: ${status.missing.join(", ")}.` };
   }
 
+  const signed: EmailMessage = { ...message, body: withSignature(message.body, message.signature) };
+
   return status.provider === "SMTP"
-    ? sendViaSmtp(message, status.from)
-    : sendViaResend(message, status.from);
+    ? sendViaSmtp(signed, status.from)
+    : sendViaResend(signed, status.from);
 }
