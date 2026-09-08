@@ -50,8 +50,15 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
   const [lastDraftId, setLastDraftId] = React.useState<string | null>(null);
   const [syncing, setSyncing] = React.useState(false);
 
-  /** Reads the mailbox and files any reply against its lead. */
-  const syncReplies = async () => {
+  /**
+   * Reads the mailbox and files any reply against its lead.
+   *
+   * `quiet` is set for the automatic run, which reports only when it finds
+   * something. A toast saying "no new replies" every time the inbox opened
+   * would be noise, and an IMAP failure on a background poll is not worth
+   * interrupting someone mid-thread.
+   */
+  const syncReplies = async (quiet = false) => {
     if (syncing) return;
 
     setSyncing(true);
@@ -59,17 +66,19 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
     setSyncing(false);
 
     if (!result.ok) {
-      toast.error("Could not check for replies", { description: result.error });
+      if (!quiet) toast.error("Could not check for replies", { description: result.error });
       return;
     }
 
     if (result.added === 0) {
-      toast("No new replies", {
-        description:
-          result.unmatched > 0
-            ? `${result.unmatched} messages arrived from addresses no lead owns.`
-            : "Nothing new has come back yet.",
-      });
+      if (!quiet) {
+        toast("No new replies", {
+          description:
+            result.unmatched > 0
+              ? `${result.unmatched} messages arrived from addresses no lead owns.`
+              : "Nothing new has come back yet.",
+        });
+      }
       return;
     }
 
@@ -81,6 +90,46 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
     });
     router.refresh();
   };
+
+  /**
+   * Checks the mailbox when the inbox opens, and every few minutes after.
+   *
+   * Behind a button, this was a feature nobody would find: a reply sat in Gmail
+   * and the thread here stayed one-sided until someone thought to press an
+   * unlabelled icon. An inbox is expected to fill itself.
+   */
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const poll = () => {
+      if (!cancelled && document.visibilityState === "visible") void syncReplies(true);
+    };
+
+    poll();
+    const timer = window.setInterval(poll, 180_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+    // Runs once for the life of the inbox; syncReplies guards its own re-entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The server is the source of truth. Seeding state from props once meant a
+  // refresh could not change it: a synced reply landed in the database and the
+  // thread on screen stayed one-sided until a full page load. Adopting the new
+  // records during render is React's documented "adjusting state on prop
+  // change", and matches how the pipeline board handles the same problem.
+  const signature = initial
+    .map((conversation) => `${conversation.id}:${conversation.messages.length}:${conversation.lastMessageAt}`)
+    .join("|");
+  const [lastSignature, setLastSignature] = React.useState(signature);
+
+  if (signature !== lastSignature) {
+    setLastSignature(signature);
+    setConversations(initial);
+  }
 
   const leadFor = React.useCallback(
     (conversation: Conversation) => leads.find((lead) => lead.id === conversation.leadId),
@@ -216,7 +265,7 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
           query={query}
           onQueryChange={setQuery}
           companyNameFor={companyNameFor}
-          onSync={() => void syncReplies()}
+          onSync={() => void syncReplies(false)}
           syncing={syncing}
         />
       </div>
