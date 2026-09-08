@@ -10,9 +10,6 @@ import { useMockData } from "@/lib/supabase/env";
 import { fetchLead } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 
-// Sending is paced, so a batch needs longer than the default request budget.
-export const maxDuration = 60;
-
 export interface CampaignActionResult {
   ok: boolean;
   error?: string;

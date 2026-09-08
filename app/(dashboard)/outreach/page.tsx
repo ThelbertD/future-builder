@@ -7,6 +7,11 @@ import { fetchCampaigns, fetchLeads } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = { title: "Outreach" };
 
+// Server actions inherit their route's budget, and sending a batch is paced
+// about a second per email. A "use server" file cannot carry this itself:
+// only async functions may be exported from one.
+export const maxDuration = 60;
+
 export default async function OutreachPage() {
   // Lead scores travel with the page so the audience rule can say how many
   // leads it actually matches, rather than leaving it to be guessed.
