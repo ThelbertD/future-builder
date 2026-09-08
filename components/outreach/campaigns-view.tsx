@@ -9,6 +9,7 @@ import {
   createCampaignAction,
   deleteCampaignAction,
   enrollLeadsAction,
+  sendCampaignDraftsAction,
   setCampaignStatusAction,
 } from "@/app/(dashboard)/outreach/actions";
 import { AIBadge } from "@/components/ai/ai-badge";
@@ -58,6 +59,39 @@ export function CampaignsView({
   const [pendingDelete, setPendingDelete] = React.useState<Campaign | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [enrolling, setEnrolling] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+  const [pendingSend, setPendingSend] = React.useState<Campaign | null>(null);
+
+  /**
+   * Sends the drafts already written for this campaign's enrolled leads.
+   *
+   * Batched, so a run that hits the cap says how many are left rather than
+   * silently stopping. Repeating it picks up where the last one finished.
+   */
+  const sendDrafts = async () => {
+    if (sending || !pendingSend) return;
+
+    setSending(true);
+    const result = await sendCampaignDraftsAction({ campaignId: pendingSend.id });
+    setSending(false);
+
+    if (!result.ok) {
+      toast.error("Nothing was sent", { description: result.error ?? result.firstError });
+      return;
+    }
+
+    setPendingSend(null);
+    const notes = [
+      result.remaining > 0 ? `${result.remaining} still queued — run it again` : null,
+      result.failed > 0 ? `${result.failed} could not be sent` : null,
+      result.firstError,
+    ].filter(Boolean);
+
+    toast.success(`${pluralize(result.sent, "email")} sent`, {
+      description: notes.length > 0 ? `${notes.join(". ")}.` : "Replies will arrive in Conversations.",
+    });
+    router.refresh();
+  };
 
   const enroll = async (campaign: Campaign) => {
     if (enrolling) return;
@@ -192,9 +226,13 @@ export function CampaignsView({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" loading={enrolling} onClick={() => void enroll(active)}>
+                <Button variant="outline" size="sm" loading={enrolling} onClick={() => void enroll(active)}>
                   <UserPlus />
                   Enrol leads
+                </Button>
+                <Button size="sm" loading={sending} onClick={() => setPendingSend(active)}>
+                  <Send />
+                  Send now
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleStatus(active)}>
                   {active.status === "active" ? <Pause /> : <Play />}
@@ -308,6 +346,19 @@ export function CampaignsView({
       ) : null}
 
       <NewCampaignDialog open={creating} onOpenChange={setCreating} leadScores={leadScores} />
+
+      <ConfirmDialog
+        open={pendingSend !== null}
+        onOpenChange={(open) => !open && setPendingSend(null)}
+        title="Send these emails now?"
+        description={`Every draft waiting on ${
+          pendingSend?.name ?? "this campaign"
+        } goes out to a real business, up to 20 per run, roughly one every second. They cannot be recalled. Anything you edited in Conversations sends as edited.`}
+        confirmLabel={sending ? "Sending…" : "Send now"}
+        loading={sending}
+        closeOnConfirm={false}
+        onConfirm={() => void sendDrafts()}
+      />
 
       <ConfirmDialog
         open={pendingDelete !== null}

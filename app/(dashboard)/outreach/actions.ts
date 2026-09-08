@@ -3,11 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { emailProviderStatus, sendEmail } from "@/lib/email/provider";
 import { composeOutreach } from "@/lib/outreach/compose";
 import { getActiveWorkspace, getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
 import { fetchLead } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
+
+// Sending is paced, so a batch needs longer than the default request budget.
+export const maxDuration = 60;
 
 export interface CampaignActionResult {
   ok: boolean;
@@ -357,5 +361,191 @@ export async function enrollLeadsAction(input: { campaignId: string }): Promise<
     alreadyOn: already.size,
     withoutEmail,
     drafted,
+  };
+}
+
+/**
+ * Sending a campaign's pending first messages is capped per run.
+ *
+ * Two limits meet here. A serverless request has to finish, and each SMTP send
+ * takes a second or two; and a personal Gmail that suddenly emits a hundred
+ * near-identical mails is exactly the pattern that gets an account rate-limited
+ * or suspended. Sending a batch, pacing it, and reporting what is left is
+ * slower than a single button but keeps the sending account alive.
+ */
+const SEND_BATCH = 20;
+const SEND_SPACING_MS = 1_200;
+
+export interface SendDraftsResult {
+  ok: boolean;
+  error?: string;
+  sent: number;
+  failed: number;
+  /** Still waiting, because the batch cap was reached. */
+  remaining: number;
+  /** The first failure, so a bad address or a dead provider is visible. */
+  firstError?: string;
+}
+
+/**
+ * Sends the drafts waiting on a campaign's enrolled leads.
+ *
+ * Nothing is composed here: it sends what enrolling already wrote, so anything
+ * edited in Conversations goes out as edited. Each send marks its message sent
+ * rather than draft, which is what makes a repeat run pick up where it stopped
+ * instead of mailing anyone twice.
+ */
+export async function sendCampaignDraftsAction(input: { campaignId: string }): Promise<SendDraftsResult> {
+  const base = { sent: 0, failed: 0, remaining: 0 };
+
+  if (useMockData) return { ok: false, error: "Connect Supabase to send outreach.", ...base };
+
+  const status = emailProviderStatus();
+  if (!status.configured) {
+    return { ok: false, error: `Email is not connected. Missing: ${status.missing.join(", ")}.`, ...base };
+  }
+
+  const [supabase, workspaceId, workspace] = await Promise.all([
+    createClient(),
+    getActiveWorkspaceId(),
+    getActiveWorkspace(),
+  ]);
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", ...base };
+
+  const { data: enrolments } = await supabase
+    .from("campaign_enrollments")
+    .select("lead_id")
+    .eq("workspace_id", workspaceId)
+    .eq("campaign_id", input.campaignId)
+    .eq("status", "active")
+    .returns<Array<{ lead_id: string }>>();
+
+  if (!enrolments || enrolments.length === 0) {
+    return { ok: false, error: "Nobody is enrolled on this campaign yet.", ...base };
+  }
+
+  const leadIds = enrolments.map((row) => row.lead_id);
+
+  // Only threads still holding an unsent draft are candidates.
+  const { data: conversations } = await supabase
+    .from("conversations")
+    .select("id, subject, contact_id, company_id, lead_id, messages!inner(id, body, is_draft)")
+    .eq("workspace_id", workspaceId)
+    .in("lead_id", leadIds)
+    .eq("messages.is_draft", true)
+    .returns<
+      Array<{
+        id: string;
+        subject: string | null;
+        contact_id: string | null;
+        company_id: string;
+        lead_id: string;
+        messages: Array<{ id: string; body: string; is_draft: boolean }>;
+      }>
+    >();
+
+  const pending = conversations ?? [];
+  if (pending.length === 0) {
+    return { ok: false, error: "There are no unsent drafts on this campaign.", ...base };
+  }
+
+  const batch = pending.slice(0, SEND_BATCH);
+  let sent = 0;
+  let failed = 0;
+  let firstError: string | undefined;
+
+  for (const [index, conversation] of batch.entries()) {
+    const draft = conversation.messages.find((message) => message.is_draft);
+    if (!draft || !conversation.contact_id) {
+      failed += 1;
+      continue;
+    }
+
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("email, full_name")
+      .eq("id", conversation.contact_id)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle<{ email: string | null; full_name: string }>();
+
+    if (!contact?.email) {
+      failed += 1;
+      firstError ??= `${contact?.full_name ?? "A contact"} has no email address.`;
+      continue;
+    }
+
+    // Paced deliberately. Back to back, this looks like a burst to the provider.
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, SEND_SPACING_MS));
+
+    const result = await sendEmail({
+      to: contact.email,
+      subject: conversation.subject ?? "Following up",
+      body: draft.body,
+      signature: workspace?.emailSignature,
+    });
+
+    if (!result.ok) {
+      failed += 1;
+      firstError ??= result.error;
+      // A rejected login or a hit quota fails every remaining send too, so
+      // stopping here leaves the rest as drafts rather than burning them.
+      if (/rejected|quota|limit|credentials/i.test(result.error ?? "")) break;
+      continue;
+    }
+
+    const now = new Date().toISOString();
+
+    await supabase
+      .from("messages")
+      .update({ is_draft: false, sent_at: now })
+      .eq("id", draft.id)
+      .eq("workspace_id", workspaceId);
+
+    await supabase
+      .from("conversations")
+      .update({
+        last_message_preview: draft.body.replace(/\n+/g, " ").slice(0, 96),
+        last_message_at: now,
+        needs_attention: false,
+      })
+      .eq("id", conversation.id)
+      .eq("workspace_id", workspaceId);
+
+    await supabase
+      .from("leads")
+      .update({ status: "contacted", last_activity_at: now })
+      .eq("id", conversation.lead_id)
+      .eq("workspace_id", workspaceId);
+
+    await supabase.from("campaign_enrollments").update({ current_step: 1, last_sent_at: now })
+      .eq("workspace_id", workspaceId)
+      .eq("campaign_id", input.campaignId)
+      .eq("lead_id", conversation.lead_id);
+
+    await supabase.from("activities").insert({
+      workspace_id: workspaceId,
+      type: "message_sent",
+      actor: "ai",
+      actor_name: "NexusOS",
+      summary: `Campaign email sent to ${contact.full_name}`,
+      detail: conversation.subject ?? undefined,
+      lead_id: conversation.lead_id,
+      company_id: conversation.company_id,
+    });
+
+    sent += 1;
+  }
+
+  revalidatePath("/outreach");
+  revalidatePath("/conversations");
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
+
+  return {
+    ok: sent > 0,
+    sent,
+    failed,
+    remaining: Math.max(0, pending.length - sent),
+    firstError,
   };
 }
