@@ -126,7 +126,11 @@ function firstNameOf(lead: LeadWithRelations): string | undefined {
 
   if (fullName.toLowerCase() === lead.company.name.trim().toLowerCase()) return undefined;
 
-  return fullName.split(/\s+/)[0];
+  // Imported names arrive in every shape, "Surname,Given" among them, so the
+  // comma is a separator too — "Hi Desoloc,Thelbert," went out to a real
+  // address because only whitespace was.
+  const first = fullName.split(/[\s,]+/).filter(Boolean)[0];
+  return first && /[a-z]/i.test(first) ? first : undefined;
 }
 
 export interface ComposeOptions {
@@ -168,7 +172,12 @@ function composeDirectory(lead: LeadWithRelations, options: ComposeOptions): Com
 }
 
 export function composeOutreach(lead: LeadWithRelations, options: ComposeOptions = {}): ComposedMessage {
-  if (DIRECTORY_SOURCES.has(lead.source)) return composeDirectory(lead, options);
+  // No advertised role means there is no posting to reference, whatever the
+  // source says. An imported lead has no job post, and the job-board wording
+  // fell back to the placeholder — "Noticed the role like that post from Flec"
+  // reached a real inbox before this check existed.
+  const hasPosting = Boolean(lead.jobPost?.title?.trim());
+  if (DIRECTORY_SOURCES.has(lead.source) || !hasPosting) return composeDirectory(lead, options);
 
   const company = lead.company.name;
   const role = midSentence(lead.jobPost?.title ?? "role like that");

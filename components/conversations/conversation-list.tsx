@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Search, Sparkles, User } from "lucide-react";
+import { RefreshCw, Search, Sparkles, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, formatRelative, initials } from "@/lib/utils";
@@ -20,6 +21,9 @@ interface ConversationListProps {
   query: string;
   onQueryChange: (query: string) => void;
   companyNameFor: (conversation: Conversation) => string;
+  /** Pulls replies out of the mailbox. */
+  onSync: () => void;
+  syncing: boolean;
 }
 
 export function ConversationList({
@@ -31,18 +35,32 @@ export function ConversationList({
   query,
   onQueryChange,
   companyNameFor,
+  onSync,
+  syncing,
 }: ConversationListProps) {
   return (
     <div className="flex h-full flex-col border-border">
       <div className="space-y-2 border-b border-border p-2">
-        <div className="relative">
-          <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search conversations…"
-            className="pl-8"
-          />
+        <div className="flex items-center gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Search conversations…"
+              className="pl-8"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={onSync}
+            loading={syncing}
+            title="Check the mailbox for replies"
+            aria-label="Check for replies"
+          >
+            <RefreshCw />
+          </Button>
         </div>
         <Tabs value={filter} onValueChange={(value) => onFilterChange(value as InboxFilter)}>
           <TabsList className="w-full">

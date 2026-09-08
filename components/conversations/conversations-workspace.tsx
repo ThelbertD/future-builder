@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { sendDraftAction } from "@/app/(dashboard)/conversations/actions";
+import { sendDraftAction, syncRepliesAction } from "@/app/(dashboard)/conversations/actions";
 import { AIBadge, AIThinking } from "@/components/ai/ai-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { IntentBadge, ScoreMeter, StatusBadge } from "@/components/common/indicators";
@@ -48,6 +48,39 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
   const [mobileDetail, setMobileDetail] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [lastDraftId, setLastDraftId] = React.useState<string | null>(null);
+  const [syncing, setSyncing] = React.useState(false);
+
+  /** Reads the mailbox and files any reply against its lead. */
+  const syncReplies = async () => {
+    if (syncing) return;
+
+    setSyncing(true);
+    const result = await syncRepliesAction();
+    setSyncing(false);
+
+    if (!result.ok) {
+      toast.error("Could not check for replies", { description: result.error });
+      return;
+    }
+
+    if (result.added === 0) {
+      toast("No new replies", {
+        description:
+          result.unmatched > 0
+            ? `${result.unmatched} messages arrived from addresses no lead owns.`
+            : "Nothing new has come back yet.",
+      });
+      return;
+    }
+
+    toast.success(`${result.added} ${result.added === 1 ? "reply" : "replies"} received`, {
+      description:
+        result.stopped > 0
+          ? `${result.stopped} sequences stopped, because they answered.`
+          : "They are on their conversations now.",
+    });
+    router.refresh();
+  };
 
   const leadFor = React.useCallback(
     (conversation: Conversation) => leads.find((lead) => lead.id === conversation.leadId),
@@ -183,6 +216,8 @@ export function ConversationsWorkspace({ conversations: initial, leads, initialC
           query={query}
           onQueryChange={setQuery}
           companyNameFor={companyNameFor}
+          onSync={() => void syncReplies()}
+          syncing={syncing}
         />
       </div>
 

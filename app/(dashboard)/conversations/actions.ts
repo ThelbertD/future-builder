@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { fetchInbound, inboxStatus } from "@/lib/email/inbox";
 import { emailProviderStatus, sendEmail } from "@/lib/email/provider";
 import { getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
@@ -120,4 +121,219 @@ export async function sendDraftAction(input: z.input<typeof inputSchema>): Promi
   revalidatePath("/dashboard");
 
   return { ok: true, sentTo: contact.email };
+}
+
+export interface SyncRepliesResult {
+  ok: boolean;
+  error?: string;
+  /** Replies matched to a lead and stored. */
+  added: number;
+  /** Received, but from an address no contact in this workspace owns. */
+  unmatched: number;
+  /** Enrolments stopped because the prospect answered. */
+  stopped: number;
+}
+
+/**
+ * Pulls replies out of the mailbox and onto their conversations.
+ *
+ * The app could send and never receive, so a prospect's answer sat in Gmail
+ * while the thread here still read one message. IMAP reuses the credentials
+ * that already send, which is why this needs nothing new configured.
+ *
+ * A reply is matched to a lead by the address it came from. Anything from an
+ * address no contact owns — newsletters, notifications, a colleague — is
+ * counted and ignored rather than guessed at.
+ */
+export async function syncRepliesAction(): Promise<SyncRepliesResult> {
+  const base = { added: 0, unmatched: 0, stopped: 0 };
+
+  if (useMockData) return { ok: false, error: "Connect Supabase to sync replies.", ...base };
+
+  const status = inboxStatus();
+  if (!status.configured) {
+    return { ok: false, error: `The mailbox is not configured. Missing: ${status.missing.join(", ")}.`, ...base };
+  }
+
+  const [supabase, workspaceId] = await Promise.all([createClient(), getActiveWorkspaceId()]);
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", ...base };
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("inbox_synced_at")
+    .eq("id", workspaceId)
+    .maybeSingle<{ inbox_synced_at: string | null }>();
+
+  // First run looks back a week; after that, only what has arrived since.
+  const since = workspace?.inbox_synced_at
+    ? new Date(workspace.inbox_synced_at)
+    : new Date(Date.now() - 7 * 86_400_000);
+
+  let inbound;
+
+  try {
+    inbound = await fetchInbound(since);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Unknown error";
+    return {
+      ok: false,
+      error: /invalid credentials|authenticationfailed|535/i.test(detail)
+        ? "The mail server rejected the login. Gmail needs IMAP enabled on the account and the same App Password used for sending."
+        : `Could not read the mailbox: ${detail}`,
+      ...base,
+    };
+  }
+
+  if (inbound.length === 0) {
+    await supabase.from("workspaces").update({ inbox_synced_at: new Date().toISOString() }).eq("id", workspaceId);
+    return { ok: true, ...base };
+  }
+
+  // One lookup for every sender, rather than a query per message.
+  const senders = Array.from(new Set(inbound.map((message) => message.fromEmail)));
+
+  const { data: contacts } = await supabase
+    .from("contacts")
+    .select("id, email, company_id")
+    .eq("workspace_id", workspaceId)
+    .in("email", senders)
+    .returns<Array<{ id: string; email: string | null; company_id: string }>>();
+
+  const byEmail = new Map<string, { id: string; company_id: string }>();
+  for (const contact of contacts ?? []) {
+    if (contact.email) byEmail.set(contact.email.toLowerCase(), contact);
+  }
+
+  let added = 0;
+  let unmatched = 0;
+  let stopped = 0;
+
+  for (const message of inbound) {
+    const contact = byEmail.get(message.fromEmail);
+
+    if (!contact) {
+      unmatched += 1;
+      continue;
+    }
+
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("contact_id", contact.id)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    if (!lead) {
+      unmatched += 1;
+      continue;
+    }
+
+    const { data: conversation } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("lead_id", lead.id)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    let conversationId = conversation?.id;
+
+    if (!conversationId) {
+      const { data: created } = await supabase
+        .from("conversations")
+        .insert({
+          workspace_id: workspaceId,
+          lead_id: lead.id,
+          company_id: contact.company_id,
+          contact_id: contact.id,
+          channel: "email",
+          subject: message.subject.replace(/^(re|fwd):\s*/i, ""),
+          mode: "human",
+        })
+        .select("id")
+        .single<{ id: string }>();
+
+      conversationId = created?.id;
+    }
+
+    if (!conversationId) {
+      unmatched += 1;
+      continue;
+    }
+
+    const { error: insertError } = await supabase.from("messages").insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      author: "prospect",
+      author_name: message.fromName ?? message.fromEmail,
+      body: message.body,
+      channel: "email",
+      sent_at: message.receivedAt.toISOString(),
+      external_id: message.externalId,
+      is_draft: false,
+    });
+
+    if (insertError) {
+      // The unique index on external_id is doing its job: this reply is
+      // already stored, which is the normal case on a repeated sync.
+      if (/duplicate key|messages_external_id_key/i.test(insertError.message)) continue;
+      unmatched += 1;
+      continue;
+    }
+
+    await supabase
+      .from("conversations")
+      .update({
+        last_message_preview: message.body.replace(/\n+/g, " ").slice(0, 96),
+        last_message_at: message.receivedAt.toISOString(),
+        needs_attention: true,
+        unread_count: 1,
+        // A human answers a reply. Handing it back to the assistant here would
+        // be the app deciding to keep talking on its own.
+        mode: "human",
+      })
+      .eq("id", conversationId)
+      .eq("workspace_id", workspaceId);
+
+    await supabase
+      .from("leads")
+      .update({ status: "replied", last_activity_at: message.receivedAt.toISOString() })
+      .eq("id", lead.id)
+      .eq("workspace_id", workspaceId);
+
+    // "Sequences pause automatically on reply" is what the Outreach page
+    // promises. This is where that becomes true.
+    const { data: halted } = await supabase
+      .from("campaign_enrollments")
+      .update({ status: "stopped" })
+      .eq("workspace_id", workspaceId)
+      .eq("lead_id", lead.id)
+      .eq("status", "active")
+      .select("id")
+      .returns<Array<{ id: string }>>();
+
+    stopped += halted?.length ?? 0;
+
+    await supabase.from("activities").insert({
+      workspace_id: workspaceId,
+      type: "message_received",
+      actor: "prospect",
+      actor_name: message.fromName ?? message.fromEmail,
+      summary: `Reply from ${message.fromName ?? message.fromEmail}`,
+      detail: message.subject,
+      lead_id: lead.id,
+      company_id: contact.company_id,
+    });
+
+    added += 1;
+  }
+
+  await supabase.from("workspaces").update({ inbox_synced_at: new Date().toISOString() }).eq("id", workspaceId);
+
+  revalidatePath("/conversations");
+  revalidatePath("/dashboard");
+  revalidatePath("/leads");
+
+  return { ok: true, added, unmatched, stopped };
 }
