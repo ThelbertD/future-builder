@@ -366,7 +366,30 @@ export async function fetchCampaigns(): Promise<Campaign[]> {
     .order("created_at", { ascending: false })
     .returns<CampaignRow[]>();
 
-  return (data ?? []).map(toCampaign);
+  const campaigns = (data ?? []).map(toCampaign);
+  if (campaigns.length === 0) return campaigns;
+
+  // The enrolled figure was a literal zero in the mapper. Counting the rows
+  // makes the headline number mean something; a workspace that has not run
+  // migration 0007 yet keeps the zero rather than failing the page.
+  const { data: enrollments } = await supabase
+    .from("campaign_enrollments")
+    .select("campaign_id")
+    .eq("workspace_id", workspaceId)
+    .eq("status", "active")
+    .returns<Array<{ campaign_id: string }>>();
+
+  if (!enrollments) return campaigns;
+
+  const counts = new Map<string, number>();
+  for (const row of enrollments) {
+    counts.set(row.campaign_id, (counts.get(row.campaign_id) ?? 0) + 1);
+  }
+
+  return campaigns.map((campaign) => ({
+    ...campaign,
+    stats: { ...campaign.stats, enrolled: counts.get(campaign.id) ?? 0 },
+  }));
 }
 
 /* -------------------------------------------------- activity & signals --- */

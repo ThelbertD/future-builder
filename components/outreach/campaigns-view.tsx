@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Pause, Play, Plus, Send, Sparkles, Target, Trash2 } from "lucide-react";
+import { Mail, Pause, Play, Plus, Send, Sparkles, Target, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   createCampaignAction,
   deleteCampaignAction,
+  enrollLeadsAction,
   setCampaignStatusAction,
 } from "@/app/(dashboard)/outreach/actions";
 import { AIBadge } from "@/components/ai/ai-badge";
@@ -34,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SERVICES } from "@/lib/constants";
-import { cn, formatNumber, formatPercent, formatRelative } from "@/lib/utils";
+import { cn, formatNumber, formatPercent, formatRelative, pluralize } from "@/lib/utils";
 import type { Campaign, CampaignStatus } from "@/types";
 
 const STATUS_VARIANTS: Record<CampaignStatus, React.ComponentProps<typeof Badge>["variant"]> = {
@@ -50,6 +51,32 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
   const [creating, setCreating] = React.useState(false);
   const [pendingDelete, setPendingDelete] = React.useState<Campaign | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [enrolling, setEnrolling] = React.useState(false);
+
+  const enroll = async (campaign: Campaign) => {
+    if (enrolling) return;
+
+    setEnrolling(true);
+    const result = await enrollLeadsAction({ campaignId: campaign.id });
+    setEnrolling(false);
+
+    if (!result.ok) {
+      toast.error("Nobody was enrolled", { description: result.error });
+      return;
+    }
+
+    // Say what is waiting to be reviewed, since that is the next thing to do.
+    const notes = [
+      result.drafted > 0 ? `${result.drafted} first messages are drafted in Conversations` : null,
+      result.withoutEmail > 0 ? `${result.withoutEmail} have no contact email yet` : null,
+      result.alreadyOn > 0 ? `${result.alreadyOn} were already on it` : null,
+    ].filter(Boolean);
+
+    toast.success(`${pluralize(result.enrolled, "lead")} enrolled`, {
+      description: notes.length > 0 ? `${notes.join(". ")}.` : "Nothing is sent until you review each draft.",
+    });
+    router.refresh();
+  };
 
   const active = campaigns.find((campaign) => campaign.id === activeId) ?? campaigns[0];
 
@@ -158,7 +185,11 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
                   {active.audienceSummary} · updated {formatRelative(active.updatedAt)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" loading={enrolling} onClick={() => void enroll(active)}>
+                  <UserPlus />
+                  Enrol leads
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleStatus(active)}>
                   {active.status === "active" ? <Pause /> : <Play />}
                   {active.status === "active" ? "Pause" : "Resume"}

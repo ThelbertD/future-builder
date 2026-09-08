@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { getActiveWorkspaceId } from "@/lib/supabase/auth";
+import { composeOutreach } from "@/lib/outreach/compose";
+import { getActiveWorkspace, getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
+import { fetchLead } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export interface CampaignActionResult {
@@ -153,4 +155,207 @@ export async function deleteCampaignAction(input: { campaignId: string }): Promi
 
   revalidatePath("/outreach");
   return { ok: true, id: input.campaignId };
+}
+
+export interface EnrollResult {
+  ok: boolean;
+  error?: string;
+  /** Leads newly added to the campaign. */
+  enrolled: number;
+  /** Already on the campaign, so left alone. */
+  alreadyOn: number;
+  /** Matched the audience but have no address to write to. */
+  withoutEmail: number;
+  /** Day 0 messages written and waiting in Conversations. */
+  drafted: number;
+}
+
+/**
+ * Enrols every lead matching a campaign's audience, and writes each one's first
+ * message.
+ *
+ * Enrolling and drafting are one action deliberately. A campaign whose enrolled
+ * count went up but produced nothing to look at would be the same hollow
+ * gesture the number itself used to be; this way enrolling puts real, specific
+ * messages in the inbox.
+ *
+ * Nothing is sent. Each Day 0 message is stored as a draft for review, which is
+ * the promise the rest of the product makes and the only responsible default
+ * when the recipients are real businesses.
+ *
+ * Running it again is safe: the unique constraint on (campaign, lead) means a
+ * second run picks up what is new and leaves everyone else untouched.
+ */
+export async function enrollLeadsAction(input: { campaignId: string }): Promise<EnrollResult> {
+  const base = { enrolled: 0, alreadyOn: 0, withoutEmail: 0, drafted: 0 };
+
+  if (useMockData) return { ok: false, error: "Connect Supabase to enrol leads.", ...base };
+
+  const [supabase, workspaceId, workspace] = await Promise.all([
+    createClient(),
+    getActiveWorkspaceId(),
+    getActiveWorkspace(),
+  ]);
+  if (!workspaceId) return { ok: false, error: "No workspace found for your account.", ...base };
+
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("id, name, min_score")
+    .eq("id", input.campaignId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle<{ id: string; name: string; min_score: number }>();
+
+  if (!campaign) return { ok: false, error: "That campaign no longer exists.", ...base };
+
+  // The audience is the campaign's own rule, so what gets enrolled always
+  // matches what the Audience panel says.
+  const { data: matching } = await supabase
+    .from("leads")
+    .select("id, contact_id")
+    .eq("workspace_id", workspaceId)
+    .gte("score", campaign.min_score)
+    .returns<Array<{ id: string; contact_id: string | null }>>();
+
+  if (!matching || matching.length === 0) {
+    return {
+      ok: false,
+      error: `No lead scores ${campaign.min_score} or above yet. Lower the campaign's minimum score, or find more leads.`,
+      ...base,
+    };
+  }
+
+  const { data: existing } = await supabase
+    .from("campaign_enrollments")
+    .select("lead_id")
+    .eq("workspace_id", workspaceId)
+    .eq("campaign_id", campaign.id)
+    .returns<Array<{ lead_id: string }>>();
+
+  const already = new Set((existing ?? []).map((row) => row.lead_id));
+  const fresh = matching.filter((lead) => !already.has(lead.id));
+  const withoutEmail = fresh.filter((lead) => !lead.contact_id).length;
+
+  if (fresh.length === 0) {
+    return {
+      ok: false,
+      error: `Every matching lead is already on ${campaign.name}.`,
+      ...base,
+      alreadyOn: already.size,
+    };
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("campaign_enrollments")
+    .insert(
+      fresh.map((lead) => ({
+        workspace_id: workspaceId,
+        campaign_id: campaign.id,
+        lead_id: lead.id,
+        status: "active",
+        current_step: 0,
+      })),
+    )
+    .select("lead_id")
+    .returns<Array<{ lead_id: string }>>();
+
+  if (error) {
+    // Until migration 0007 has run there is no table to enrol into, and the
+    // generic failure would send someone hunting through the wrong code.
+    const missingTable = /campaign_enrollments/.test(error.message) && /does not exist/i.test(error.message);
+    return {
+      ok: false,
+      error: missingTable
+        ? "Run database/migrations/0007_enrollments.sql in Supabase first — the enrolments table does not exist yet."
+        : "Those leads could not be enrolled.",
+      ...base,
+    };
+  }
+
+  // Draft the first message for each one. Sequential so writes stay ordered,
+  // and capped because this runs inside a single request.
+  let drafted = 0;
+
+  for (const row of (inserted ?? []).slice(0, 50)) {
+    const lead = await fetchLead(row.lead_id);
+    if (!lead?.contact?.email) continue;
+
+    const draft = composeOutreach(lead, { bookingUrl: workspace?.bookingUrl });
+
+    const { data: conversation } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("lead_id", lead.id)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    let conversationId = conversation?.id;
+
+    if (!conversationId) {
+      const { data: created } = await supabase
+        .from("conversations")
+        .insert({
+          workspace_id: workspaceId,
+          lead_id: lead.id,
+          company_id: lead.companyId,
+          contact_id: lead.contactId ?? null,
+          channel: "email",
+          subject: draft.subject,
+          mode: "ai",
+          needs_attention: true,
+        })
+        .select("id")
+        .single<{ id: string }>();
+
+      conversationId = created?.id;
+    }
+
+    if (!conversationId) continue;
+
+    // One draft per thread: replace rather than stack duplicates.
+    await supabase
+      .from("messages")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("conversation_id", conversationId)
+      .eq("is_draft", true);
+
+    const { error: messageError } = await supabase.from("messages").insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      author: "ai",
+      author_name: "NexusOS",
+      body: draft.body,
+      channel: "email",
+      sent_at: new Date().toISOString(),
+      is_draft: true,
+    });
+
+    if (messageError) continue;
+
+    await supabase
+      .from("conversations")
+      .update({
+        subject: draft.subject,
+        last_message_preview: draft.body.replace(/\n+/g, " ").slice(0, 96),
+        last_message_at: new Date().toISOString(),
+        needs_attention: true,
+      })
+      .eq("id", conversationId)
+      .eq("workspace_id", workspaceId);
+
+    drafted += 1;
+  }
+
+  revalidatePath("/outreach");
+  revalidatePath("/conversations");
+  revalidatePath("/dashboard");
+
+  return {
+    ok: true,
+    enrolled: inserted?.length ?? 0,
+    alreadyOn: already.size,
+    withoutEmail,
+    drafted,
+  };
 }
