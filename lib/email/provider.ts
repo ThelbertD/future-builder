@@ -66,6 +66,16 @@ function credential(name: string): string | undefined {
   return unquoted.trim() || undefined;
 }
 
+/**
+ * Exactly one address, and nothing else.
+ *
+ * SMTP_USER has arrived as "desolocthelbert3@gmail.com@gmail.com" — a doubled
+ * domain that the mail server can only answer with the same 535 a wrong
+ * password gives. That is worth catching here, where the fault can be named,
+ * rather than after a round trip that blames the password.
+ */
+const ADDRESS_PATTERN = /^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/;
+
 /** Gmail needs no host or port; everything else must state them. */
 function smtpSettings() {
   const user = credential("SMTP_USER");
@@ -91,6 +101,14 @@ export function emailProviderStatus(): EmailProviderStatus {
 
   if (!from) missing.push("EMAIL_FROM");
   else if (!FROM_PATTERN.test(from)) missing.push('EMAIL_FROM (use an address, or "Name <a@b.com>")');
+
+  // A malformed sign-in address is indistinguishable from a wrong password once
+  // the server has answered, so it is reported before anything is attempted.
+  const user = credential("SMTP_USER");
+  if (user && !ADDRESS_PATTERN.test(user)) {
+    missing.push(`SMTP_USER (currently "${user}", which is not one email address)`);
+    return { configured: false, provider: "SMTP", from: from || undefined, missing };
+  }
 
   if (smtp) {
     return { configured: missing.length === 0, provider: "SMTP", from: from || undefined, missing };
