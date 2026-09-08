@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { composeOutreach } from "@/lib/outreach/compose";
 import { hostnameOf } from "@/lib/scraper/html";
+import { scoreJob, type ScoredJob } from "@/lib/scraper/scoring";
+import type { ScrapedJob } from "@/lib/scraper/types";
 import { getActiveWorkspace, getActiveWorkspaceId } from "@/lib/supabase/auth";
 import { useMockData } from "@/lib/supabase/env";
 import { fetchLead } from "@/lib/supabase/queries";
@@ -237,6 +239,55 @@ const importCsvSchema = z.object({ rows: z.array(csvRowSchema).min(1).max(2000) 
 
 const INTENTS = new Set(["hot", "high", "medium", "low"]);
 
+/**
+ * Scores an imported row the way a directory record is scored.
+ *
+ * An imported row is exactly that: a business with contact details and no
+ * advertised opening, so it goes through the same branch as an OpenStreetMap
+ * record rather than getting a number invented for it. The scorer rewards what
+ * genuinely matters here — a named contact with a deliverable address — and
+ * produces the breakdown, signals and reasoning the lead page renders.
+ */
+function scoreImportedRow(row: z.infer<typeof csvRowSchema>): ScoredJob {
+  const industry = row.industry ?? "";
+
+  const record: ScrapedJob = {
+    id: `csv:${row.companyName}`,
+    sourceId: "csv",
+    sourceName: row.source || "CSV import",
+    externalId: row.companyName,
+    title: row.opportunity || industry || "Imported record",
+    companyName: row.companyName,
+    location: row.location || "Not stated",
+    remote: false,
+    engagementType: "Retainer",
+    description: [row.opportunity, industry, row.notes].filter(Boolean).join(". "),
+    url: sanitizeUrl(row.website) ?? "",
+    postedAt: new Date().toISOString(),
+    tags: [industry, row.contactTitle].filter((value): value is string => Boolean(value)),
+    kind: "database",
+    companyUrl: sanitizeUrl(row.website),
+    industry: industry || undefined,
+    contact: row.contactEmail
+      ? {
+          fullName: row.contactName || row.companyName,
+          email: row.contactEmail,
+          phone: row.contactPhone,
+          title: row.contactTitle,
+        }
+      : undefined,
+  };
+
+  // The scorer matches keywords against the search that found a record. An
+  // import had no search, so it is judged on the record alone.
+  return scoreJob(record, {
+    keywords: [],
+    location: "all",
+    postedWithinDays: 3650,
+    minScore: 0,
+  });
+}
+
 /** Reads a number out of a spreadsheet cell, which may carry a currency symbol. */
 function numberFrom(value: string | undefined, max: number): number {
   if (!value) return 0;
@@ -382,31 +433,66 @@ export async function importLeadsFromCsvAction(
       }
     }
 
-    const score = numberFrom(row.score, 100);
-    const intent = row.intent?.toLowerCase();
+    // A file that carries its own score is trusted; otherwise the row is scored
+    // the same way any other contact-bearing record is. Leaving it at zero made
+    // an imported lead invisible to every campaign and score filter in the app,
+    // which is a strange reward for bringing your own data.
+    const givenScore = row.score ? numberFrom(row.score, 100) : 0;
+    const analysis = givenScore > 0 ? null : scoreImportedRow(row);
+    const score = givenScore > 0 ? givenScore : (analysis?.score ?? 0);
 
-    const { error: leadError } = await supabase.from("leads").insert({
-      workspace_id: workspaceId,
-      company_id: companyId,
-      contact_id: contactId,
-      stage_id: stage.id,
-      status: "new",
-      score,
-      intent: intent && INTENTS.has(intent) ? intent : "low",
-      estimated_value: numberFrom(row.estimatedValue, 10_000_000),
-      notes: row.notes ?? "",
-      source: row.source || "Company Site",
-      tags: (row.tags ?? "")
-        .split(/[;,]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-        .slice(0, 5),
-    });
+    const givenIntent = row.intent?.toLowerCase();
+    const intent =
+      givenIntent && INTENTS.has(givenIntent) ? givenIntent : (analysis?.intent ?? "low");
 
-    if (leadError) {
+    const { data: lead, error: leadError } = await supabase
+      .from("leads")
+      .insert({
+        workspace_id: workspaceId,
+        company_id: companyId,
+        contact_id: contactId,
+        stage_id: stage.id,
+        status: "new",
+        score,
+        score_breakdown: analysis?.breakdown ?? {},
+        intent,
+        estimated_value: numberFrom(row.estimatedValue, 10_000_000),
+        notes: row.notes ?? "",
+        source: row.source || "Company Site",
+        tags: (row.tags ?? "")
+          .split(/[;,]/)
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+          .slice(0, 5),
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (leadError || !lead) {
       skipped += 1;
       problems.push(`Line ${line}: ${row.companyName} could not be added.`);
       continue;
+    }
+
+    // The reasoning the lead detail page renders. Without it an imported lead
+    // opens to an empty panel where every other lead explains itself.
+    if (analysis) {
+      await supabase.from("ai_analyses").insert({
+        workspace_id: workspaceId,
+        lead_id: lead.id,
+        score: analysis.score,
+        intent: analysis.intent,
+        opportunity_type: analysis.opportunityType,
+        recommended_services: analysis.recommendedServices,
+        reasoning: analysis.reasoning,
+        signals: analysis.signals,
+        risks: analysis.risks,
+        suggested_next_action: row.contactEmail
+          ? `Write to ${row.contactEmail}. Imported records carry no posting, so open with what ${row.companyName} does.`
+          : `Find an address for ${row.companyName} before drafting anything.`,
+        confidence: analysis.confidence,
+        model: "heuristic-v1",
+      });
     }
 
     imported += 1;

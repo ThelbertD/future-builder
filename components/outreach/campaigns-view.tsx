@@ -45,7 +45,13 @@ const STATUS_VARIANTS: Record<CampaignStatus, React.ComponentProps<typeof Badge>
   completed: "default",
 };
 
-export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
+export function CampaignsView({
+  campaigns,
+  leadScores,
+}: {
+  campaigns: Campaign[];
+  leadScores: number[];
+}) {
   const router = useRouter();
   const [activeId, setActiveId] = React.useState(campaigns[0]?.id ?? "");
   const [creating, setCreating] = React.useState(false);
@@ -301,7 +307,7 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
         </div>
       ) : null}
 
-      <NewCampaignDialog open={creating} onOpenChange={setCreating} />
+      <NewCampaignDialog open={creating} onOpenChange={setCreating} leadScores={leadScores} />
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -327,16 +333,25 @@ export function CampaignsView({ campaigns }: { campaigns: Campaign[] }) {
 function NewCampaignDialog({
   open,
   onOpenChange,
+  leadScores,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  leadScores: number[];
 }) {
   const router = useRouter();
   const [name, setName] = React.useState("");
-  const [minScore, setMinScore] = React.useState("80");
+  // Starting at the default rather than a round number: a threshold above every
+  // lead you own produces a campaign that can never enrol anyone, and there was
+  // nothing on this screen that would have told you so.
+  const [minScore, setMinScore] = React.useState("50");
   const [service, setService] = React.useState<string>(SERVICES[0]);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const threshold = Number(minScore) || 0;
+  const matching = leadScores.filter((score) => score >= threshold).length;
+  const highest = leadScores.length > 0 ? Math.max(...leadScores) : 0;
 
   const submit = async () => {
     if (!name.trim()) return;
@@ -393,6 +408,18 @@ function NewCampaignDialog({
               value={minScore}
               onChange={(event) => setMinScore(event.target.value)}
             />
+            <p
+              className={cn(
+                "text-[12px]",
+                matching === 0 ? "text-warning" : "text-muted-foreground",
+              )}
+            >
+              {leadScores.length === 0
+                ? "No leads in this workspace yet, so nothing will enrol."
+                : matching === 0
+                  ? `No lead scores ${minScore} or above. Your highest is ${highest}.`
+                  : `${pluralize(matching, "lead")} of ${leadScores.length} score ${minScore} or above.`}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label>Primary service</Label>
