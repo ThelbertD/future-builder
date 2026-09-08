@@ -7,9 +7,10 @@ import { fetchCampaigns, fetchLeads } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = { title: "Outreach" };
 
-// Server actions inherit their route's budget, and sending a batch is paced
-// about a second per email. A "use server" file cannot carry this itself:
-// only async functions may be exported from one.
+// Server actions inherit their route's time budget, and sending a batch is
+// paced about a second per email. This has to live on the route: a server-action
+// module may export nothing but async functions, so declaring it there fails the
+// build outright.
 export const maxDuration = 60;
 
 export default async function OutreachPage() {
